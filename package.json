@@ -1,5 +1,10 @@
 {
+	"name": "rope",
 	"module": true,
+	"scripts": {
+		"typecheck": "tsgo",
+		"build": "esbuild --bundle out/userscript.js --minify-whitespace --platform=browser --outfile=out/dist-userscript.js"
+	},
 	"dependencies": {
 		"@types/react": "^19.2.7",
 		"@types/react-dom": "^19.2.3",
