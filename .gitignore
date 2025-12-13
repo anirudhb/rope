@@ -1,4 +1,3 @@
 /node_modules
 /out
-pnpm-lock.yaml
 /src/plugins/taut
