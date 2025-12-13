@@ -1,0 +1,3 @@
+[submodule "jspatching"]
+	path = jspatching
+	url = https://github.com/anirudhb/jspatching.git

@@ -1,0 +1,16 @@
+{
+  "compilerOptions": {
+    "target": "es2024",
+    "module": "esnext",
+    "outDir": "out",
+    "lib": ["es2024", "dom"],
+    "moduleResolution": "bundler",
+    "jsx": "react",
+    "jsxFactory": "globalThis.React.createElement",
+    "jsxFragmentFactory": "globalThis.React.Fragment"
+  },
+  "references": [
+    { "path": "./jspatching" }
+  ],
+  "include": ["src/**/*"]
+}
