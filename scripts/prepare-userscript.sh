@@ -3,8 +3,5 @@
 pnpm run build
 version="$(jq -r .version package.json)"
 [[ -n "$NIGHTLY" ]] && version="$version-nightly+$(git rev-parse --short HEAD)"
-templ="$(<scripts/userscript-template.js)"
-code="$(<out/dist-userscript.js)"
-x1="${templ//###VERSION###/$version}"
-x2="${x1//###CODE###/$code}"
-printf "%s" "$x2" > out/dist-userscript.user.js
+cat scripts/userscript-template.js out/dist-userscript.js > out/dist-userscript2.js
+sed -e "s/__VERSION__/$version/g" out/dist-userscript2.js > out/dist-userscript.user.js
