@@ -1,0 +1,34 @@
+name: Build nightly
+
+on:
+  push:
+    branches:
+      - master
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8
+        with:
+          submodules: recursive
+      - name: Setup node
+        uses: actions/setup-node@395ad3262231945c25e8478fd5baf05154b1d79f
+        with:
+          node-version: 24
+      - name: Setup pnpm
+        uses: pnpm/action-setup@b9e1dbc72ff7358f971cc0b7c62c7a0d83f1068b
+        with:
+          version: 10
+      - name: Install and build
+        run: |
+          pnpm install
+          NIGHTLY=1 ./scripts/prepare-userscript.sh
+      - name: Publish userscript
+        uses: softprops/action-gh-release@60cfd9a691d814dcf0d094598101c5cb61cd1646
+        with:
+          name: nightly
+          prerelease: true
+          files: |
+            ./out/dist-userscript.user.js

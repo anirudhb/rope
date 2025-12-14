@@ -1,5 +1,6 @@
 {
 	"name": "rope",
+	"version": "0.1",
 	"module": true,
 	"scripts": {
 		"typecheck": "tsgo",
