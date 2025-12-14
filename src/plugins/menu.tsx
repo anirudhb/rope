@@ -51,39 +51,40 @@ function RopeMenu() {
 }
 
 export default function init() {
-  react.patchComponent2(Tabs, Tabs => (props) => {
-    const [isTabSelected, setIsTabSelected] = globalThis.React.useState(false);
+  react.patchComponentWithTester2(
+    Tabs,
+    (props) => props?.className === "p-prefs_dialog__tabs" && props?.tabs?.length > 0,
+    Tabs => (props) => {
+      const [isTabSelected, setIsTabSelected] = globalThis.React.useState(false);
 
-    const newTabItem = {
-      id: "rope",
-      label: <>Rope</>,
-      content: <RopeMenu />,
-      "aria-label": "rope",
-      svgIcon: { name: "code" },
-    } satisfies TabsItemData;
-    let tabs = props.tabs;
-    if (props?.className === "p-prefs_dialog__tabs" && props?.tabs?.length) {
-      tabs = [...tabs, newTabItem];
-    }
+      const newTabItem = {
+        id: "rope",
+        label: <>Rope</>,
+        content: <RopeMenu />,
+        "aria-label": "rope",
+        svgIcon: { name: "code" },
+      } satisfies TabsItemData;
+      let tabs = [...props.tabs, newTabItem];
 
-    const oldTabChange = props.onTabChange;
-    const handleTabChange = globalThis.React.useCallback((id: string, e: React.UIEvent) => {
-      if (id === newTabItem.id) {
-        setIsTabSelected(true);
-      } else {
-        setIsTabSelected(false);
-        if (oldTabChange)
-          oldTabChange(id, e);
-      }
-    }, [oldTabChange]);
+      const oldTabChange = props.onTabChange;
+      const handleTabChange = globalThis.React.useCallback((id: string, e: React.UIEvent) => {
+        if (id === newTabItem.id) {
+          setIsTabSelected(true);
+        } else {
+          setIsTabSelected(false);
+          if (oldTabChange)
+            oldTabChange(id, e);
+        }
+      }, [oldTabChange]);
 
-    const currentTabId = isTabSelected ? newTabItem.id : props.currentTabId;
+      const currentTabId = isTabSelected ? newTabItem.id : props.currentTabId;
 
-    return <Tabs
-      {...props}
-      tabs={tabs}
-      onTabChange={handleTabChange}
-      currentTabId={currentTabId}
-    />;
-  });
+      return <Tabs
+        {...props}
+        tabs={tabs}
+        onTabChange={handleTabChange}
+        currentTabId={currentTabId}
+      />;
+    },
+  );
 }
