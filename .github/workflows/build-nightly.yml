@@ -41,6 +41,11 @@ jobs:
         run: |
           NIGHTLY=1 ./scripts/prepare-userscript.sh
           cp ./out/dist-userscript.user.js Rope_for_Slack.user.js
+      - name: Delete old nightly release
+        run: |
+          gh release delete nightly --cleanup-tag || true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
       - name: Publish userscript
         uses: softprops/action-gh-release@60cfd9a691d814dcf0d094598101c5cb61cd1646
         with:
