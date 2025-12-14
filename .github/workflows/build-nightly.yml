@@ -34,6 +34,7 @@ jobs:
           for p in taut/plugins/*; do
             plugin="$(basename "$p")"
             sed -e 's#\.\./core/Plugin#../../taut#g' \
+              -e "#import.*from 'console'#d" \
               -e 's#React#globalThis.React#g' \
               taut/plugins/"$plugin" > src/plugins/taut/"$plugin"
           done
