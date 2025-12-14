@@ -21,9 +21,21 @@ jobs:
         uses: pnpm/action-setup@b9e1dbc72ff7358f971cc0b7c62c7a0d83f1068b
         with:
           version: 10
-      - name: Install and build
+      - name: Install deps and esbuild
         run: |
           pnpm install
+          pnpm --allow-build=esbuild add esbuild
+      - name: Prepare Taut plugins
+        run: |
+          git clone https://github.com/jeremy46231/taut
+          (cd taut && git checkout 162293a4ed8c18e382e6f0157f4161586170e789)
+          for plugin in taut/plugins/*; do
+            sed -e 's#\.\./core/Plugin#../../taut#g' \
+              -e 's#React#globalThis.React#g' \
+              taut/plugins/"$plugin" > src/plugins/taut/"$plugin"
+          done
+      - name: Build
+        run: |
           NIGHTLY=1 ./scripts/prepare-userscript.sh
       - name: Publish userscript
         uses: softprops/action-gh-release@60cfd9a691d814dcf0d094598101c5cb61cd1646
