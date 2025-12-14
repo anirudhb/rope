@@ -34,17 +34,18 @@ jobs:
           for p in taut/plugins/*; do
             plugin="$(basename "$p")"
             sed -e 's#\.\./core/Plugin#../../taut#g' \
-              -e "#import.*from 'console'#d" \
-              -e 's#React#globalThis.React#g' \
+              -e "/import.*from 'console'/d" \
               taut/plugins/"$plugin" > src/plugins/taut/"$plugin"
           done
       - name: Build
         run: |
           NIGHTLY=1 ./scripts/prepare-userscript.sh
+          cp ./out/dist-userscript.user.js Rope_for_Slack.user.js
       - name: Publish userscript
         uses: softprops/action-gh-release@60cfd9a691d814dcf0d094598101c5cb61cd1646
         with:
           name: nightly
+          tag_name: nightly
           prerelease: true
           files: |
-            ./out/dist-userscript.user.js
+            ./Rope_for_Slack.user.js
