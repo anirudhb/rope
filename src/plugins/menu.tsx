@@ -36,8 +36,6 @@ function TautCompatMenu() {
     </div>)}
     <hr/>
     <MrkdwnElement text={`Plugin configurations are stored in \`localStorage\`.\nSome plugins may require a reload to properly take effect.\nThings are unstable and may break, your computer might even catch on fire. Please report any bugs!`} />
-    <hr/>
-    <MrkdwnElement text={`Rope v__VERSION__, by <@U01D9DWGEB0>`} />
   </FieldSet>
 }
 
@@ -47,6 +45,8 @@ function RopeMenu() {
     <hr />
     {/*<Heading>Test</Heading>*/}
     <>Some more text</>
+    <hr/>
+    <MrkdwnElement text={`Rope v__VERSION__, by <@U01D9DWGEB0>`} />
   </div>;
 }
 
