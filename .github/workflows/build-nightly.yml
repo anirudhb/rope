@@ -29,6 +29,7 @@ jobs:
         run: |
           git clone https://github.com/jeremy46231/taut
           (cd taut && git checkout 162293a4ed8c18e382e6f0157f4161586170e789)
+          mkdir -p src/plugins/taut/
           for p in taut/plugins/*; do
             plugin="$(basename "$p")"
             sed -e 's#\.\./core/Plugin#../../taut#g' \
