@@ -3,8 +3,7 @@
 	"version": "0.1",
 	"module": true,
 	"scripts": {
-		"typecheck": "tsgo",
-		"build": "esbuild --bundle out/userscript.js --minify-whitespace --platform=browser --outfile=out/dist-userscript.js"
+		"build": "tsgo -b && esbuild --bundle out/userscript.js --minify-whitespace --platform=browser --outfile=out/dist-userscript.js"
 	},
 	"dependencies": {
 		"@types/react": "^19.2.7",

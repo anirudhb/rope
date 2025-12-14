@@ -21,10 +21,11 @@ jobs:
         uses: pnpm/action-setup@b9e1dbc72ff7358f971cc0b7c62c7a0d83f1068b
         with:
           version: 10
-      - name: Install deps and esbuild
+      - name: Install deps, esbuild, tsgo
         run: |
           pnpm install
           pnpm --allow-build=esbuild add esbuild
+          pnpm --allow-build=@typescript/native-preview add @typescript/native-preview
       - name: Prepare Taut plugins
         run: |
           git clone https://github.com/jeremy46231/taut
