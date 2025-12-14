@@ -46,6 +46,8 @@ jobs:
         with:
           name: nightly
           tag_name: nightly
+          body: |
+            Nightly release, things may be broken - use with caution!
           prerelease: true
           files: |
             ./Rope_for_Slack.user.js

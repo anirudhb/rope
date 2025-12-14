@@ -5,6 +5,6 @@ version="$(jq -r .version package.json)"
 [[ -n "$NIGHTLY" ]] && version="$version-nightly+$(git rev-parse --short HEAD)"
 templ="$(<scripts/userscript-template.js)"
 code="$(<out/dist-userscript.js)"
-x1="${templ//__VERSION__/$version}"
-x2="${x1//__CODE__/$code}"
+x1="${templ//###VERSION###/$version}"
+x2="${x1//###CODE###/$code}"
 printf "%s" "$x2" > out/dist-userscript.user.js
