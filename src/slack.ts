@@ -1,8 +1,32 @@
 import * as webpack from "jspatching/webpack";
 import * as react from "jspatching/react";
+import * as redux from "jspatching/redux";
 
 webpack._3type_hookWebpackChunkEarly("webpackChunkwebapp");
+//redux.registerPrettyReduxMatcher("slack1", (r, s, e) => typeof s === "undefined");
+//redux.registerPrettyReduxMatcher("slack2", (r, s, e) => typeof e === "undefined");
+redux.registerPrettyReduxMatcher("slack", (r, s, e) => !!r && !!s && !!e);
+//redux.insertReduxReducerPatch("slack", "logger", (s, a, r) => {
+//  console.log("[Rope] slack reducer called with action", a);
+//  return r(s, a);
+//});
 react.init();
+
+/*
+ * important fields for Redux action creators (functions):
+ * description - what it does
+ * getType() - returns the action .type, usually =description
+ * isFetcherCreator - may be true
+ * isThunkCreator - may be true
+ * meta { description, key, name, usageCount } - meta info
+ *
+ * example:
+ * description: "[Fetcher 886] Sends a message"
+ * getType: ()=>n.description
+ * isFetcherCreator: true
+ * isThunkCreator: true
+ * meta: {description: "Sends a message", key: "createFetcherChatPostMessage", name: "chatPostMessage", usageCount: 2}
+ */
 
 export const PlainText = react.virtualComponent<{
   id?: string;
