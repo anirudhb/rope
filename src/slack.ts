@@ -1,7 +1,7 @@
 import * as webpack from "jspatching/webpack";
 import * as react from "jspatching/react";
 
-webpack._2_hookWebpackChunk((window as any).webpackChunkwebapp, "slack");
+webpack._3type_hookWebpackChunkEarly("webpackChunkwebapp");
 react.init();
 
 export const PlainText = react.virtualComponent<{

@@ -59,16 +59,26 @@ globalThis.TautAPI = {
       e.parentNode.removeChild(e);
   },
   findExport(filter: TautAPI__filter, all = false) {
-    return webpack.tryFindWebpackModule(filter, all);
+    const r = webpack.tryFindWebpackExport(filter, all);
+    if (!r)
+      return null;
+    if (!Array.isArray(r))
+      return r.export;
+    return r.map(x=>x.export);
   },
   findByProps(props: string[], all = false) {
-    return webpack.tryFindWebpackModule(m => {
+    const r = webpack.tryFindWebpackExport(m => {
       const ks = Object.keys(m);
       for (const k of ks)
         if (props.includes(k))
           return true;
       return false;
     }, all);
+    if (!r)
+      return null;
+    if (!Array.isArray(r))
+      return r.export;
+    return r.map(x=>x.export);
   },
   commonModules: {
     React: globalThis.React,
@@ -76,8 +86,8 @@ globalThis.TautAPI = {
     ReactDOMClient: globalThis._ReactDOMClient,
   },
   findComponent(name: string, _all = false, _filter?: TautAPI__filter) {
-    // TODO: support _all and _filter
-    return react.tryFindReactComponent(name);
+    // FIXME: slow?
+    return react.virtualComponent(name);
   },
   patchComponent(matcher, replacement) {
     // TODO: support non-string matchers
