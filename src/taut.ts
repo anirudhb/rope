@@ -81,7 +81,7 @@ globalThis.TautAPI = {
     return r.map(x=>x.export);
   },
   commonModules: {
-    React: globalThis.React,
+    React: globalThis.React as any,
     ReactDOM: globalThis._ReactDOM,
     ReactDOMClient: globalThis._ReactDOMClient,
   },
