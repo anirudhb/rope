@@ -82,12 +82,16 @@ export function startRopePlugin(id: string) {
   if (!p)
     return;
   /* destroy old plugin */
-  p.destroy?.();
+  if (p.destroy) {
+    console.log(`[Rope] stopping old plugin for ${id}`);
+    p.destroy();
+  }
 
   const info = getPersistedRopePluginInfo(id);
   /* create api */
   const api = createRopePluginAPI(id);
   p.destroy = p.plugin.init(api, info.config);
+  console.log(`[Rope] started plugin ${id}`);
 }
 
 export function stopRopePlugin(id: string) {
@@ -96,6 +100,7 @@ export function stopRopePlugin(id: string) {
     return;
   p.destroy();
   p.destroy = null;
+  console.log(`[Rope] stopped plugin ${id}`);
 }
 
 export function getRopePluginEnabled(id: string): boolean {
@@ -108,6 +113,7 @@ export function setRopePluginEnabled(id: string, enabled: boolean, syncRunning: 
     return;
   const info = getPersistedRopePluginInfo(id);
   info.enabled = enabled;
+  console.log(`[Rope] set plugin ${id} to enabled: ${enabled}`);
 
   if (syncRunning) {
     if (enabled && !p.destroy)
@@ -123,8 +129,10 @@ export function setRopePluginEnabled(id: string, enabled: boolean, syncRunning: 
 export function startConfiguredRopePlugins() {
   for (const id of __ropePluginRegistry.keys()) {
     const info = getPersistedRopePluginInfo(id);
-    if (info.enabled)
+    if (info.enabled) {
+      console.log(`[Rope] starting configured plugin ${id}`);
       startRopePlugin(id);
+    }
   }
 }
 
