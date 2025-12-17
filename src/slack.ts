@@ -111,6 +111,7 @@ export const Legend = react.virtualComponent<React.PropsWithChildren<{
   className?: string;
 }>>("Legend");
 export const SvgIcon = react.virtualComponent<{
+  inline?: boolean;
   name:
   | "add-bot"
   | "add-branch"
@@ -798,6 +799,31 @@ export const Label = react.virtualComponent<React.PropsWithChildren<{
   // default true
   dataQaLabel?: true;
 }>>("Label");
+export const Tooltip = react.virtualComponent<React.PropsWithChildren<{
+  delay: number;
+  // default false(?)
+  hideFromScreenReader?: boolean;
+  tip: () => React.ReactNode;
+}>>("Tooltip");
+export const BaseMrkdwnChannel = react.virtualComponent<{
+  alwaysDisplayAsLink?: boolean;
+  channelHasNonUniqueName?: boolean;
+  channelName?: string;
+  clogLinkClick?: () => void;
+  id: string;
+  isChannelImOrMpim: boolean;
+  isFromAnotherTeam: boolean;
+  isMember: boolean;
+  isNonExistent: boolean;
+  isPrivate: boolean;
+  isRecord: boolean;
+  isUnknown: boolean;
+  maybeOpenInSurfaceOrNavigate?: () => void;
+  mpimMemberNames?: string[];
+  noLinking?: boolean;
+  team?: string;
+  teamName?: string;
+}>("BaseMrkdwnChannel");
 
 const cs = {
   PlainText,
@@ -809,6 +835,8 @@ const cs = {
   Legend,
   SvgIcon,
   Label,
+  Tooltip,
+  BaseMrkdwnChannel,
 };
 
 globalThis.$components = {};
