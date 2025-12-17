@@ -824,6 +824,12 @@ export const BaseMrkdwnChannel = react.virtualComponent<{
   team?: string;
   teamName?: string;
 }>("BaseMrkdwnChannel");
+export const MemberProfileRestriction = react.virtualComponent<{
+  className?: string;
+  /* TODO: add types */
+  member: any;
+  team: any;
+}>("MemberProfileRestriction");
 
 const cs = {
   PlainText,
