@@ -808,6 +808,7 @@ const cs = {
   FieldSet,
   Legend,
   SvgIcon,
+  Label,
 };
 
 globalThis.$components = {};
