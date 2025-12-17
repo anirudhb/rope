@@ -1,6 +1,6 @@
 // Rope menu
-import * as react from "jspatching/react";
 import * as plugins from "../plugins";
+import type { RopeAPI } from "../api";
 import { Tabs, TabsItemData, Heading, FieldSet, Legend, Label, MrkdwnElement } from "../slack";
 
 function PluginsList() {
@@ -46,8 +46,8 @@ function RopeMenu() {
   </div>;
 }
 
-function init() {
-  const unpatchTabs = react.patchComponentWithTester2(
+function init(api: RopeAPI) {
+  const unpatchTabs = api.react.patchComponentWithTester2(
     Tabs,
     (props) => props?.className === "p-prefs_dialog__tabs" && props?.tabs?.length > 0,
     Tabs => (props) => {
