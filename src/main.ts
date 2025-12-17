@@ -3,9 +3,10 @@ import * as plugins from "./plugins";
 import * as taut from "./taut";
 
 import menuPlugin from "./plugins/menu";
+import InvisibleForward from "./plugins/InvisibleForward";
 
 import PrivateChannel from "./plugins/taut/PrivateChannel";
-import InvisibleForward from "./plugins/taut/InvisibleForward";
+import TautInvisibleForward from "./plugins/taut/InvisibleForward";
 import IdvStatus from "./plugins/taut/IdvStatus";
 import Oneko from "./plugins/taut/Oneko";
 import ShinigamiEyes from "./plugins/taut/ShinigamiEyes";
@@ -13,6 +14,7 @@ import ShinigamiEyes from "./plugins/taut/ShinigamiEyes";
 /* initialize rope plugins */
 const ropePlugins: plugins.RopePlugin[] = [
   menuPlugin,
+  InvisibleForward,
 ];
 
 for (const p of ropePlugins)
@@ -25,7 +27,7 @@ plugins.setRopePluginEnabled(menuPlugin.id, true, false);
 const tautPlugins: taut.TautPluginConstructor[] = [
   // order probably matters, but shrug
   PrivateChannel,
-  InvisibleForward,
+  TautInvisibleForward,
   IdvStatus,
   Oneko,
   ShinigamiEyes,
