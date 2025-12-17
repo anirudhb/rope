@@ -3,13 +3,15 @@ import * as webpack from "jspatching/webpack";
 import * as react from "jspatching/react";
 import * as redux from "jspatching/redux";
 import * as slack from "./slack"
-import type { RopePlugin } from "./api";
+import type { RopeAPI, RopePlugin } from "./api";
 
 /* convenient */
 export type { RopePlugin } from "./api";
 
 export type RopePluginRegistration = {
-  plugin: RopePlugin;
+  plugin: RopePlugin & {
+    defaultConfig?: any;
+  };
   /* when not null, plugin is loaded */
   destroy?: () => void;
 };
@@ -35,21 +37,34 @@ export function registerRopePlugin<C = any>(plugin: RopePlugin<C>) {
 }
 
 /**
- * Hooks sets to the given object and persists them to localStorage under the given key
+ * Hooks sets to the given object and persists them to localStorage under the given key.
+ * Note!! This only stores sets as a convenience. The object should not be assumed to have live data.
  */
-function localStorageProxy(key: string, obj: any): any {
-  return new Proxy(obj, {
-    set(target, p, newValue, _receiver) {
-      const r = Reflect.set(target, p, newValue);
-      localStorage.setItem(key, JSON.stringify(target));
+function localStorageProxy<T = any>(key: string, obj: T): T {
+  return new Proxy(obj as any, {
+    set(target, p, newValue_, _receiver) {
+      const oldValue = JSON.stringify(target);
+      const r = Reflect.set(target, p, newValue_);
+      const newValue = JSON.stringify(target);
+      localStorage.setItem(key, newValue);
+      /* FIXME: bad? */
+      window.dispatchEvent(new StorageEvent("storage", {
+        key,
+        oldValue,
+        newValue,
+      }));
       return r;
     },
   });
 }
 
+function getPersistedRopePluginInfoKey(id: string): string {
+  return `rope-plugin-info-${id}`;
+}
+
 /* creates the info if it does not exist */
 function getPersistedRopePluginInfo(id: string): PersistedRopePluginInfo {
-  const k = `rope-plugin-info-${id}`;
+  const k = getPersistedRopePluginInfoKey(id);
   if (!(k in localStorage)) {
     const o = {
       id,
@@ -64,16 +79,65 @@ function getPersistedRopePluginInfo(id: string): PersistedRopePluginInfo {
   }
 }
 
-function createRopePluginAPI(id: string) {
-  const log = (...args: any[]) => {
-    return console.log(`[Rope-plugins] [${id}]`, ...args);
-  };
+/* React hook for localStorage JSON */
+function useLocalStorage<T>(key: string): [T, (x: T) => void] {
+  const [value, setValue] = globalThis.React.useState(() => JSON.parse(localStorage.getItem(key)));
+
+  function listener(e: StorageEvent) {
+    if (e.key === key)
+      setValue(JSON.parse(localStorage.getItem(key)));
+  }
+
+  globalThis.React.useEffect(() => {
+    window.addEventListener("storage", listener);
+    return () => window.removeEventListener("storage", listener);
+  }, []);
+
+  return [value, (x) => {
+    const oldValue = JSON.stringify(value);
+    //if (typeof x === "function")
+    //  x = x(value);
+    const newValue = JSON.stringify(x);
+    /* set the value on localStorage then emit a storage event */
+    localStorage.setItem(key, newValue);
+    window.dispatchEvent(new StorageEvent("storage", {
+      key,
+      oldValue,
+      newValue,
+    }));
+  }];
+}
+
+const selfExports: typeof import("./plugins") = {
+  __ropePluginRegistry,
+  registerRopePlugin,
+  startRopePlugin,
+  stopRopePlugin,
+  getRopePluginEnabled,
+  setRopePluginEnabled,
+  startConfiguredRopePlugins,
+  setRopePluginConfig,
+};
+
+function createRopePluginAPI(id: string): RopeAPI {
+  const log = (...args: any[]) => console.log(`[Rope-plugins] [${id}]`, ...args);
   return {
     webpack,
     react,
     redux,
     slack,
+    plugins: selfExports,
     log,
+    usePluginConfig: (getter = (c) => c, setter = (_c, x) => x) => {
+      const k = getPersistedRopePluginInfoKey(id);
+      const [info, setInfo] = useLocalStorage<PersistedRopePluginInfo>(k);
+      const value = globalThis.React.useMemo(() => getter(info.config), [info]);
+
+      return [value, (x) => setInfo({
+        ...info,
+        config: setter(info.config, x),
+      })];
+    },
   };
 }
 
@@ -88,6 +152,8 @@ export function startRopePlugin(id: string) {
   }
 
   const info = getPersistedRopePluginInfo(id);
+  if (info.config === null && p.plugin.defaultConfig)
+    info.config = p.plugin.defaultConfig;
   /* create api */
   const api = createRopePluginAPI(id);
   p.destroy = p.plugin.init(api, info.config);
@@ -151,14 +217,10 @@ export function setRopePluginConfig(id: string, config: any, restart: boolean = 
 
 /* expose on window */
 let o = {
-  __ropePluginRegistry,
-  registerRopePlugin,
-  startRopePlugin,
-  stopRopePlugin,
-  getRopePluginEnabled,
-  setRopePluginEnabled,
-  startConfiguredRopePlugins,
-  setRopePluginConfig,
+  ...selfExports,
+  localStorageProxy,
+  getPersistedRopePluginInfoKey,
+  getPersistedRopePluginInfo,
 };
 
 for (const [k, v] of Object.entries(o)) {
