@@ -46,6 +46,9 @@ export function adaptRopeAPIToTaut(ropeApi: RopeAPI): TautAPI {
       } else {
         e = document.createElement("style");
         e.textContent = css;
+        /* body may not exist when running super-early */
+        if (!document.body)
+          document.querySelector("html").appendChild(document.createElement("body"));
         document.body.appendChild(e);
       }
     },
