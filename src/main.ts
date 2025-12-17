@@ -4,6 +4,7 @@ import * as taut from "./taut";
 
 import menuPlugin from "./plugins/menu";
 import InvisibleForward from "./plugins/InvisibleForward";
+import PrivateChannelMapper from "./plugins/PrivateChannelMapper";
 
 import PrivateChannel from "./plugins/taut/PrivateChannel";
 import TautInvisibleForward from "./plugins/taut/InvisibleForward";
@@ -15,6 +16,7 @@ import ShinigamiEyes from "./plugins/taut/ShinigamiEyes";
 const ropePlugins: plugins.RopePlugin[] = [
   menuPlugin,
   InvisibleForward,
+  PrivateChannelMapper,
 ];
 
 for (const p of ropePlugins)
