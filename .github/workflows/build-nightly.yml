@@ -24,6 +24,7 @@ jobs:
       - name: Install deps, esbuild, tsgo
         run: |
           pnpm install
+          (cd jspatching && pnpm install)
           pnpm --allow-build=esbuild add esbuild
           pnpm --allow-build=@typescript/native-preview add @typescript/native-preview
       - name: Prepare Taut plugins

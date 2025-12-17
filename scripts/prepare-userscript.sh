@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-pnpm run build
+pnpm run build || exit 1
 version="$(jq -r .version package.json)"
 [[ -n "$NIGHTLY" ]] && version="$version-nightly+$(git rev-parse --short HEAD)"
 cat scripts/userscript-template.js out/dist-userscript.js > out/dist-userscript2.js
