@@ -6,6 +6,8 @@ import menuPlugin from "./plugins/menu";
 import InvisibleForward from "./plugins/InvisibleForward";
 import PrivateChannelMapper from "./plugins/PrivateChannelMapper";
 import DeactivatedByFD from "./plugins/DeactivatedByFD";
+//import MonacoMessageEditor from "./plugins/MonacoMessageEditor";
+import CodemirrorMessageEditor from "./plugins/CodemirrorMessageEditor";
 
 import PrivateChannel from "./plugins/taut/PrivateChannel";
 import TautInvisibleForward from "./plugins/taut/InvisibleForward";
@@ -19,6 +21,8 @@ const ropePlugins: plugins.RopePlugin[] = [
   InvisibleForward,
   PrivateChannelMapper,
   DeactivatedByFD,
+  //MonacoMessageEditor,
+  CodemirrorMessageEditor,
 ];
 
 for (const p of ropePlugins)

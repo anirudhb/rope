@@ -4,6 +4,7 @@
     "module": "esnext",
     "outDir": "out",
     "lib": ["es2024", "dom"],
+    "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowUmdGlobalAccess": true,
     "jsx": "react",

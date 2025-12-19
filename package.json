@@ -6,8 +6,17 @@
 		"build": "tsgo -b && esbuild --bundle out/userscript.js --minify-whitespace --platform=browser --outfile=out/dist-userscript.js"
 	},
 	"dependencies": {
+		"@codemirror/commands": "^6.10.1",
+		"@codemirror/state": "^6.5.2",
+		"@codemirror/view": "^6.39.4",
+		"@shikijs/langs": "^3.20.0",
+		"@shikijs/langs-precompiled": "^3.20.0",
+		"@shikijs/themes": "^3.20.0",
 		"@types/react": "^19.2.7",
 		"@types/react-dom": "^19.2.3",
-		"jspatching": "link:jspatching"
+		"codemirror-shiki": "^0.3.0",
+		"jspatching": "link:jspatching",
+		"quill": "^2.0.3",
+		"shiki": "^3.20.0"
 	}
 }

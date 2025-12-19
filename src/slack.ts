@@ -1,6 +1,8 @@
 import * as webpack from "jspatching/webpack";
 import * as react from "jspatching/react";
 import * as redux from "jspatching/redux";
+import type Quill from "quill";
+import type { Delta as QuillDelta } from "quill";
 
 webpack._3type_hookWebpackChunkEarly("webpackChunkwebapp");
 //redux.registerPrettyReduxMatcher("slack1", (r, s, e) => typeof s === "undefined");
@@ -28,6 +30,7 @@ react.init();
  * meta: {description: "Sends a message", key: "createFetcherChatPostMessage", name: "chatPostMessage", usageCount: 2}
  */
 
+type AnyFunction = (..._args: any[]) => any;
 export const PlainText = react.virtualComponent<{
   id?: string;
   text: string;
@@ -830,6 +833,195 @@ export const MemberProfileRestriction = react.virtualComponent<{
   member: any;
   team: any;
 }>("MemberProfileRestriction");
+export const MessageInput = react.virtualComponent<{
+  // TODO: fill out function signatures
+  addFileIdToDraft: AnyFunction;
+  ariaDescribedBy?: string;
+  canUserShareContacts?: boolean;
+  channel?: any;
+  channelDisplayName?: string;
+  channelId?: string;
+  className?: string;
+  clearDraftSendingWithId: AnyFunction;
+  /* bound action creator */
+  clearDrafts: (arg: {
+    disableBlockUnfurlClearing?: boolean;
+    disableGifUnfurlClearing?: boolean;
+    ids: string[];
+    reason: "MessageInput:updateDraft";
+  }) => any;
+  clientTheme: "light" | "dark";
+  clogFileAttached: AnyFunction;
+  clogger?: any;
+  composerUpArrowShortcutPref?: any;
+  /* bound action creator */
+  convertBlocksToDelta: AnyFunction;
+  /* bound action creator */
+  convertDeltaToBlocks: (arg: {
+    delta: QuillDelta;
+    options?: {
+      /* default false */
+      convertEmpty?: boolean;
+      /* default false */
+      trimEndingWhitespace?: boolean;
+      /* default true */
+      trimStartingWhitespace?: boolean;
+      /* default false */
+      expandTruncatedLinks?: boolean;
+      /* default false */
+      useExpandedRichText?: boolean;
+    };
+  }) => /*blocks*/any;
+  draft?: any;
+  draftComposerFiles: any[];
+  draftId: string;
+  editLastMessage: AnyFunction;
+  enableActionsButton: boolean;
+  enableAgentMentionButton: boolean;
+  enableAskAiButton: boolean;
+  enableAudioButton: boolean;
+  enableBroadcastKeywords: boolean;
+  enableClipsRepackagingCoachmark: boolean;
+  enableComposerButton: boolean;
+  enableEmojiButton: boolean;
+  enableEmojiButtonBadge: boolean;
+  enableExpandButton?: boolean;
+  enableGifPicker: boolean;
+  enableJumbomoji: boolean;
+  enableMentionButton: boolean;
+  enableScheduleSendButton: boolean;
+  enableSendButton: boolean;
+  enableSlashCommandsButton: boolean;
+  enableStoryButton: boolean;
+  enqueueToast: AnyFunction;
+  experimentAgentforceShowAudioAndVideoClipComposerButtonsEnabledGroupOn: boolean;
+  experimentDeferMessageInputContentUpdateGroupOn: boolean;
+  experimentSlackAiComposerGroupOn: boolean;
+  externalMemberAwarenessBannerData: any[];
+  fetchDraftUnfurlData: AnyFunction;
+  focusOnPaste: boolean;
+  gifPickerPrefEnabled: boolean;
+  hasAnyDestinationNames: boolean;
+  hasBlockUnfurls: boolean;
+  hasDraftUnfurls: boolean;
+  hasGifUnfurls: boolean;
+  hasKeyboardFocus: boolean;
+  isAgentChannel: boolean;
+  isAiAppSendingDisabled: boolean;
+  isAtMaximumFilesAllowed: boolean;
+  isClientOnline: boolean;
+  isExpanded?: boolean;
+  isImOrMpim: boolean;
+  isMinDraftLengthForComposer: boolean;
+  isProgressiveDisclosureTipVisible: boolean;
+  isSendingDisabled: boolean;
+  isSlackbotAiIm: boolean;
+  isSlackbotSendingDisabled: boolean;
+  loadProgressiveDisclosureMegaphoneNotificationData: AnyFunction;
+  logger: {
+    action: AnyFunction;
+    debug: AnyFunction;
+    devHint: AnyFunction;
+    error: AnyFunction;
+    info: AnyFunction;
+    teamOrEnterpriseId: string;
+    timeStamp: AnyFunction;
+    warn: AnyFunction;
+  };
+  maxLength?: number;
+  maxLines?: number;
+  messageEligibleForUnsending?: boolean;
+  onBlur: AnyFunction;
+  onExpand: AnyFunction;
+  onFocus: AnyFunction;
+  // TODO: these take args?
+  onSelectionChange: AnyFunction;
+  onTextChange: AnyFunction;
+  onUpArrow: AnyFunction;
+  openModal: AnyFunction;
+  openScheduleMessageDialog: AnyFunction;
+  openSnippetDialog: AnyFunction;
+  pendingFileIds: any[];
+  placeholder?: React.ReactNode;
+  prepareScheduledDraftAfterEditing: AnyFunction;
+  refToForward?: React.Ref<Quill>;
+  scheduleSendMessage: AnyFunction;
+  screenReaderIsEnabled: boolean;
+  searchIsVisible: boolean;
+  searchPrecache: AnyFunction;
+  // takes arg?
+  sendMessage: AnyFunction;
+  /* bound action creator */
+  setDraft: (arg: {
+    draft: {
+      client_draft_id: string;
+      cursor_index: number;
+      destinations: any[];
+      is_from_composer: boolean;
+      ops: QuillDelta["ops"];
+      shouldWithold: boolean;
+    };
+    reason: "MessageInput:updateDraft";
+    skipEqualityCheck: boolean;
+  }) => any;
+  setDraftContactUnfurlData: AnyFunction;
+  shouldForceFileMenuOpen: boolean;
+  shouldForceShortcutsMenuOpen: boolean;
+  shouldShowTractorFilesCoachmark: boolean;
+  showAutoSlackFirstMessageNudge: boolean;
+  showDefaultChannelClipsCoachmark?: boolean;
+  showDefaultChannelEmojiCoachmark?: boolean;
+  showDmMessageNudge: boolean;
+  showFocusOutline: boolean;
+  showInviteJoinerFirstDmReplyNudge: boolean;
+  showNurtureUserBadge: boolean;
+  showProgressiveDisclosureAtMentionFlag?: boolean;
+  showProgressiveDisclosureFirstMessageExplainer?: boolean;
+  showProgressiveDisclosureFirstMessageFlag?: boolean;
+  showProgressiveDisclosureThreadsExplainer?: boolean;
+  showSlackConnectMessageInputInviterBanner: boolean;
+  showSuggestedWelcomeMessage: boolean;
+  showUnfurlsLimitWarning: boolean;
+  teamId: string;
+  triggerNavigateBack: AnyFunction;
+  triggerNavigateForward: AnyFunction;
+  undoSendLastMessageInChannel: AnyFunction;
+  unifiedDraft?: any;
+  upToBrowseKbShortcutPref: boolean;
+  uploadDraftFiles: AnyFunction;
+  upsertBlockUnfurl: AnyFunction;
+  userId?: string;
+  viewContext: string;
+  wasRecentlyOnline: boolean;
+  windowId: string;
+  windowRef?: WeakRef<any>;
+  windowToken?: any;
+}>("MessageInput");
+export const ComposerAttachments = react.virtualComponent<{
+  channelId?: string;
+  draftFiles: any[];
+  draftId?: string;
+  focusInput: AnyFunction;
+  /*
+   onUnfurlRemoved: () => {
+    this.updateOrClearDraft({
+        inputRef: this.getInputRef(),
+        immediately: !0,
+        skipEqualityCheck: !0
+    })
+}
+,
+onFilePermissionSelect: () => {
+    this.updateOrClearDraft({
+        inputRef: this.getInputRef(),
+        immediately: !0,
+        skipEqualityCheck: !0
+    })
+}
+*/
+  onFilePermissionSelect: AnyFunction;
+  onUnfurlRemoved: AnyFunction;
+}>("WrappedConnect(ComposerAttachments)");
 
 const cs = {
   PlainText,
