@@ -4,13 +4,8 @@ import { EditorView, keymap, lineNumbers, placeholder } from "@codemirror/view";
 import { EditorState, Compartment, SelectionRange } from "@codemirror/state";
 import { defaultKeymap, indentWithTab, history, historyKeymap } from "@codemirror/commands";
 import { createHighlighterCore, type HighlighterCore } from "shiki";
-//import { createOnigurumaEngine } from "shiki/engine/oniguruma";
 // TODO: investigate precompiled languages, https://shiki.style/guide/regex-engines#pre-compiled-languages
 import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
-
-//import shikiWasm from "shiki/wasm";
-//import shikiLangMdx from "@shikijs/langs/mdx";
-//import shikiThemeDraculaSoft from "@shikijs/themes/dracula-soft";
 
 import shiki from "codemirror-shiki";
 
@@ -72,7 +67,7 @@ function cmSelectionToQuillRange(selection: SelectionRange): Range {
   };
 }
 
-function shimQuillFromEditorView(api: RopeAPI, editorView: EditorView, historyCompartment: Compartment, shimCompartment: Compartment): {
+function shimQuillFromEditorView(editorView: EditorView, historyCompartment: Compartment, shimCompartment: Compartment): {
   /* Real Quill methods */
   blur: Quill["blur"];
   focus: Quill["focus"];
@@ -80,7 +75,7 @@ function shimQuillFromEditorView(api: RopeAPI, editorView: EditorView, historyCo
   container: Quill["container"];
   getSelection: Quill["getSelection"];
   getLength: Quill["getLength"];
-  getContents: () => { contents: Delta["ops"] };//Quill["getContents"];
+  getContents: () => { contents: Delta["ops"] };
   getFormat: Quill["getFormat"];
   on: Quill["on"];
   off: Quill["off"];
@@ -129,7 +124,7 @@ function shimQuillFromEditorView(api: RopeAPI, editorView: EditorView, historyCo
     getFormat: (..._args: any[]) => {
       return {};
     },
-    // FIXME: do we actually need to return Emitters?
+    // seems like we don't actually need to return Emitters
     on: addListener as any,
     off: removeListener as any,
     once: ((ev, listener) => {
@@ -204,10 +199,6 @@ function patchLog(api: RopeAPI, x: (...args: any[]) => any, prefix: string): (..
 }
 
 const init: RopePluginInit = (api) => {
-  const slackStore = api.redux.virtualPrettyReduxStore("slack");
-  //const storeLocalDraft = api.webpack.virtualPopulatePrettyWebpackExport("actionCreators::setLocalDraft", m => m?.meta?.name === "setLocalDraft");
-  //const clearLocalDrafts = api.webpack.virtualPopulatePrettyWebpackExport("actionCreators::clearLocalDrafts", m => m?.meta?.name === "clearLocalDrafts");
-
   const { ComposerAttachments } = api.slack;
 
   const unpatchMessageInput = api.react.patchComponentWithTester2(api.slack.MessageInput, props => props.viewContext === "Channel", MessageInput => props => {
@@ -231,70 +222,22 @@ const init: RopePluginInit = (api) => {
 
     // XXX: on* callbacks only seem to be used when refToForward doesn't get populated?
     /* state */
-    //const [cmIsFocused, setCmIsFocused] = globalThis.React.useState(true);
     const [shouldStoreDraft, setShouldStoreDraft] = globalThis.React.useState(false);
     const [shouldSendMessage, setShouldSendMessage] = globalThis.React.useState(false);
     const [lastStoredDraft, setLastStoredDraft] = globalThis.React.useState(null);
-    //const [cmSelectionChange, setCmSelectionChange] = globalThis.React.useState(0);
 
     function updateDraft(draft: any, draftId: string, stateSnapshot: EditorState) {
-      //const editorView = editorViewRef.current;
-      //if (stateSnapshot.doc.toString() === "") {
-      //  // clear the draft
-      //  //if (draft?.client_draft_id)
-      //  //  //slackStore.dispatch(clearLocalDrafts({
-      //  //  props.clearDrafts({
-      //  //    ids: [draft.client_draft_id],
-      //  //  });
-      //  props.clearDrafts({
-      //    ids: [draftId],
-      //    reason: "MessageInput:updateDraft",
-      //  });
-      //} else {
-      //  // XXX: do I need to pass all of these fields here?
-      //  //slackStore.dispatch(storeLocalDraft({
-      //  props.setDraft({
-      //    draft: {
-      //      cursor_index: stateSnapshot.selection.main.from,
-      //      //last_updated: Math.floor(Date.now() / 1000),
-      //      ...(draft ?? {
-      //        //client_draft_id: props.channelId!,
-      //        client_draft_id: draftId,
-      //        // does this work? lol
-      //        destinations: [
-      //          { channel_id: props.channelId! },
-      //        ],
-      //        is_from_composer: false,
-      //        shouldWithold: true,
-      //        //skipEqualityCheck: false,
-      //      }),
-      //      ops: deltaOpsFromString(stateSnapshot.doc.toString()),
-      //      //blocks: props.convertDeltaToBlocks({
-      //      //  delta: { ops: deltaOpsFromString(editorView.state.doc.toString()) } as any,
-      //      //}),
-      //    },
-      //    reason: "MessageInput:updateDraft",
-      //    skipEqualityCheck: false,
-      //  });
-      //}
       const d = {
         cursor_index: stateSnapshot.selection.main.from,
-        //last_updated: Math.floor(Date.now() / 1000),
         ...(draft ?? {
-          //client_draft_id: props.channelId!,
           client_draft_id: draftId,
-          // does this work? lol
           destinations: [
             { channel_id: props.channelId! },
           ],
           is_from_composer: false,
           shouldWithold: true,
-          //skipEqualityCheck: false,
         }),
         ops: deltaOpsFromString(stateSnapshot.doc.toString()),
-        //blocks: props.convertDeltaToBlocks({
-        //  delta: { ops: deltaOpsFromString(editorView.state.doc.toString()) } as any,
-        //}),
       };
       props.setDraft({
         draft: d,
@@ -313,7 +256,7 @@ const init: RopePluginInit = (api) => {
         editorViewRef.current = new EditorView({
           parent: cmParentEl.current,
           state: EditorState.create({
-            doc: "",//adaptDraft(props.draft),
+            doc: "",
             extensions: [
               placeholderCompartmentRef.current.of([]),
               lineNumbers(),
@@ -333,10 +276,6 @@ const init: RopePluginInit = (api) => {
                 ...defaultKeymap,
               ]),
               shimCompartmentRef.current.of([]),
-              //EditorView.updateListener.of(update => {
-              //  if (update.focusChanged)
-              //    setCmIsFocused(update.view.hasFocus);
-              //}),
               EditorView.theme({
                 "&": {
                   borderRadius: "5px",
@@ -353,8 +292,7 @@ const init: RopePluginInit = (api) => {
         });
         api.log(`modified MessageInput mounted codemirror editor`, editorViewRef.current);
 
-        quillShimRef.current = shimQuillFromEditorView(api, editorViewRef.current, historyCompartmentRef.current, shimCompartmentRef.current);
-        //quillShimRef.current.on("selection-change", () => setCmSelectionChange(x => x+1));
+        quillShimRef.current = shimQuillFromEditorView(editorViewRef.current, historyCompartmentRef.current, shimCompartmentRef.current);
         quillShimRef.current.on("editor-change", () => {
           if (draftTimerRef.current)
             clearTimeout(draftTimerRef.current);
@@ -425,18 +363,7 @@ const init: RopePluginInit = (api) => {
             insert: adaptDraft(props.draft),
           },
         });
-      // check if this causes issues
-      //updateDraft();
     }, [props.draft]);
-
-    ///* store draft on focus changes *AND* unmount (!!) */
-    //globalThis.React.useEffect(() => {
-    //  if (!cmIsFocused)
-    //    updateDraft(props.draft, props.draftId, editorViewRef.current.state);
-    //  /* on cleanup, also save the draft FROM OLD PROPS! */
-    //  // FIXME: spooky
-    //  //return () => updateDraft(props.draft, props.draftId, editorViewRef.current.state);
-    //}, [cmIsFocused]);
 
     // store draft on timer
     globalThis.React.useEffect(() => {
@@ -472,17 +399,13 @@ const init: RopePluginInit = (api) => {
     /* send message */
     globalThis.React.useEffect(() => {
       if (shouldSendMessage) {
-        //updateDraft(props.draft, props.draftId, editorViewRef.current.state);
         props.sendMessage?.();
-        ///* clear the message box ourself since sometimes Slack doesn't do it */
-        //quillShimRef.current?.clear();
         setShouldSendMessage(false);
       }
     }, [shouldSendMessage]);
 
-    const tempShowOldInput = false;
     /* flex stuff is a hack? but it works */
-    const res = (
+    return (
       <div style={{display: "flex", flexDirection: "column", gap: "8px"}}>
         <ComposerAttachments
           channelId={props.channelId}
@@ -497,10 +420,6 @@ const init: RopePluginInit = (api) => {
         </div>
       </div>
     );
-    return tempShowOldInput ? <>
-      {res}
-      <MessageInput {...props} />
-    </> : res;
   });
 
   return () => {
