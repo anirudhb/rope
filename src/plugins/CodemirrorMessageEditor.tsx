@@ -437,8 +437,47 @@ function patchLog(api: RopeAPI, x: (...args: any[]) => any, prefix: string): (..
 
 const init: RopePluginInit = (api) => {
   let unpatchers = [];
-  const { pre, post } = api.webpack.earlyPopulatePrettyWebpackExport("actionCreators::chatPostMessage", m => m?.meta?.name === "chatPostMessage");
-  pre(i => {
+
+  const { pre: preLinkifyDeltaText } = api.webpack.earlyPopulatePrettyWebpackExport("linkifyDeltaText", m => m?.name === "linkifyDeltaText");
+  preLinkifyDeltaText(i => {
+    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", linkifyDeltaText => (delta: any, opts?: any) => {
+      //api.log(`linkifyDeltaText called with delta`, delta);
+      if (delta?.ops?.[0]?.insert?.[0] === "\u0091") {
+        //api.log(`passing through cm delta`);
+        return delta;
+      }
+      return linkifyDeltaText(delta, opts);
+    });
+    unpatchers.push(u);
+  });
+
+  const { pre: preConvertDeltaToBlocks } = api.webpack.earlyPopulatePrettyWebpackExport("convertDeltaToBlocks", m => m?.name === "convertDeltaToBlocks");
+  preConvertDeltaToBlocks(i => {
+    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", convertDeltaToBlocks => (arg: any) => {
+      //api.log(`convertDeltaToBlocks called with arg`, arg);
+      if (arg?.delta?.ops?.[0]?.insert?.[0] === "\u0091") {
+        const t = arg.delta.ops[0].insert;
+        //api.log(`passing through cm text`, t);
+        return {
+          blocks: [{
+            type: "rich_text",
+            elements: [{
+              type: "rich_text_section",
+              elements: [{
+                type: "text",
+                text: t,
+              }],
+            }],
+          }],
+        };
+      }
+      return convertDeltaToBlocks(arg);
+    });
+    unpatchers.push(u);
+  });
+
+  const { pre: preChatPostMessage } = api.webpack.earlyPopulatePrettyWebpackExport("actionCreators::chatPostMessage", m => m?.meta?.name === "chatPostMessage");
+  preChatPostMessage(i => {
     const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", chatPostMessage => (arg: any) => {
       api.log(`chatPostMessage called with arg`, arg);
       /* transform message */
