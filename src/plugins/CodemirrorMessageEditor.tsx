@@ -630,10 +630,10 @@ const init: RopePluginInit = (api) => {
         });
     }, [props.placeholder]);
 
-    /* update state when draft changes */
+    /* update state when draftId changes */
     globalThis.React.useEffect(() => {
       const editorView = editorViewRef.current;
-      if (editorView)
+      if (editorView && props.draft)
         editorView.dispatch({
           changes: {
             from: 0,
@@ -641,7 +641,7 @@ const init: RopePluginInit = (api) => {
             insert: adaptDraft(props.draft),
           },
         });
-    }, [props.draft]);
+    }, [props.draftId]);
 
     // store draft on timer
     globalThis.React.useEffect(() => {
