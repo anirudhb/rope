@@ -172,6 +172,10 @@ function Usergroup(props) {
   });
 }
 
+function Fundamental(props) {
+  return myJsx(_shim_Fundamental, props.raw);
+}
+
 /* "custom" components */
 
 function Unfurl(props) {
@@ -219,6 +223,7 @@ function evalMdxForSlack(src: string, props = {}): any {
       Emoji,
       User,
       Usergroup,
+      Fundamental,
       /* custom */
       Unfurl,
     }),
