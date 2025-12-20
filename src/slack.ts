@@ -1022,6 +1022,34 @@ onFilePermissionSelect: () => {
   onFilePermissionSelect: AnyFunction;
   onUnfurlRemoved: AnyFunction;
 }>("WrappedConnect(ComposerAttachments)");
+export const BlockKitRenderer = react.virtualComponent<{
+  appId?: string;
+  // something
+  blockKitLogPayload?: any;
+  blockLimit?: number;
+  blocks: any[];
+  // message
+  blocksContainerContext: string;
+  blocksProcessed?: any[];
+  channelId?: string;
+  clogLinkClick?: AnyFunction;
+  container: string;
+  containerActionsPayload?: any;
+  containerId?: string;
+  customFormatHandler?: AnyFunction;
+  dimmedUserIds?: string[];
+  inline?: boolean;
+  isSlackbotMessage?: boolean;
+  messageTs?: string;
+  isInAppView?: boolean;
+  onAction?: AnyFunction;
+  openFileViewer?: AnyFunction;
+  remountOnUpdate: boolean;
+  renderBlock?: AnyFunction;
+  senderMemberId?: string;
+  serviceId?: string;
+  showConfirmDialog?: AnyFunction;
+}>("WrappedConnect(withFocusTransition(auto-metrics(BlockKitRenderer)))");
 
 const cs = {
   PlainText,

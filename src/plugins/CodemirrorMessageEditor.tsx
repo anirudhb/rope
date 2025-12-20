@@ -9,8 +9,234 @@ import { createJavaScriptRegexEngine } from "shiki/engine/javascript";
 
 import shiki from "codemirror-shiki";
 
+import { evaluateSync } from "@mdx-js/mdx";
+import remarkGfm from "remark-gfm";
+
 import type Quill from "quill";
 import { type Delta, type Range } from "quill";
+
+/* MDX stuff */
+
+let _shim_Fragment = Symbol.for("_shim_Fragment");
+
+function myJsx(type, props, key = undefined) {
+  return {
+    type,
+    props,
+    key,
+  };
+}
+
+let _shim_Fundamental = Symbol.for("_shim_Fundamental");
+
+/* Renders a "rich text" section (!!) */
+function renderShimJsxRichTextSection(tree) {
+  if (typeof tree === "string")
+    /* unstyled text element */
+    return {
+      type: "text",
+      text: tree,
+    };
+  if (tree.type === _shim_Fundamental)
+    /* fundamental, passthrough */
+    return tree.props;
+  if (tree.type === _shim_Fragment) {
+    if (!tree.props?.children)
+      // ???
+      return [];
+    if (Array.isArray(tree.props.children))
+      return tree.props.children.map(renderShimJsxRichTextSection);
+    return [renderShimJsxRichTextSection(tree.props.children)];
+  }
+  if (typeof tree.type === "function") {
+    /* "component" */
+    return renderShimJsxRichTextSection(tree.type(tree.props));
+  }
+  /* a, p, strong, em, del */
+  const builtins = {
+    a: Builtin__a,
+    //Toplevel: Builtin__Toplevel,
+    p: Builtin__p,
+    strong: Builtin__strong,
+    em: Builtin__em,
+    del: Builtin__del,
+  };
+  /* render children */
+  const children = renderShimJsxRichTextSection(myJsx(_shim_Fragment, {
+    children: tree.props.children,
+  }));
+  let out = children;
+  if (tree.type in builtins) {
+    const x = builtins[tree.type]({
+      ...tree.props,
+      children,
+    });
+    /* rerender */
+    out = renderShimJsxRichTextSection(x);
+  }
+  return out;
+}
+
+/* built-in components get children rendered as fragment (array) */
+
+function Builtin__a(props) {
+  if (props.children.length > 1)
+    throw new Error("a only accepts up to a single child");
+  const child = props.children[0];
+  if (child && child.type !== "text")
+    throw new Error("a only accepts a text child");
+  return myJsx(_shim_Fundamental, {
+    type: "link",
+    url: props.href,
+    text: child?.text,
+    unsafe: props.unsafe,
+    style: child?.style,
+  });
+}
+
+function Builtin__p(props) {
+  /* do nothing */
+  return myJsx(_shim_Fundamental, props.children);
+}
+
+function Builtin__addStyle(name, style, props) {
+  return myJsx(_shim_Fundamental, props.children.map(child => ({
+    ...child,
+    style: {
+      ...(child.style ?? {}),
+      [style]: true,
+    },
+  })));
+}
+
+function Builtin__strong(props) {
+  return Builtin__addStyle("strong", "bold", props);
+}
+
+function Builtin__em(props) {
+  return Builtin__addStyle("em", "italic", props);
+}
+
+function Builtin__del(props) {
+  return Builtin__addStyle("del", "strike", props);
+}
+
+/* fundamental custom components */
+
+function Broadcast(props) {
+  return myJsx(_shim_Fundamental, {
+    type: "broadcast",
+    range: props.who,
+  });
+}
+
+function Color(props) {
+  return myJsx(_shim_Fundamental, {
+    type: "color",
+    value: props.value,
+  });
+}
+
+function Channel(props) {
+  return myJsx(_shim_Fundamental, {
+    type: "channel",
+    channel_id: props.id,
+  });
+}
+
+// TODO
+//function Date(props) {
+//  return myJsx(_shim_Fundamental, {
+//    type: "date",
+//  });
+//}
+
+function Emoji(props) {
+  return myJsx(_shim_Fundamental, {
+    type: "emoji",
+    name: props.name,
+  });
+}
+
+function User(props) {
+  return myJsx(_shim_Fundamental, {
+    type: "user",
+    user_id: props.id,
+  });
+}
+
+function Usergroup(props) {
+  return myJsx(_shim_Fundamental, {
+    type: "usergroup",
+    usergroup_id: props.id,
+  });
+}
+
+/* "custom" components */
+
+function Unfurl(props) {
+  return myJsx("a", {
+    ...props,
+    children: "\u2060",
+  });
+}
+
+// TODO: "Mention" component that unifies some of the above
+
+// debug
+function _shim_jsx_walk_tree(api: RopeAPI, tree, indent=0) {
+  if (typeof tree !== "object") {
+    api.log(" ".repeat(indent), tree);
+    return;
+  }
+  api.log(" ".repeat(indent), "type:", tree.type, "name:", tree.type?.name);
+  api.log(" ".repeat(indent), "key:", tree.key);
+  api.log(" ".repeat(indent), "props:", JSON.stringify(tree.props));
+  const children = tree.props?.children
+    ? Array.isArray(tree.props.children)
+      ? tree.props.children
+      : [tree.props.children]
+    : [];
+  for (const c of children) {
+    api.log(" ".repeat(indent+1), "child:");
+    _shim_jsx_walk_tree(api, c, indent+2);
+  }
+}
+
+// returns array of blocks
+function evalMdxForSlack(src: string, props = {}): any {
+  /* all in memory so sync should be ok */
+  const { default: defaultOut } = evaluateSync(src, {
+    format: "mdx",
+    Fragment: _shim_Fragment,
+    jsx: myJsx,
+    jsxs: myJsx,
+    useMDXComponents: () => ({
+      /* custom/fundamental */
+      Broadcast,
+      Color,
+      Channel,
+      Emoji,
+      User,
+      Usergroup,
+      /* custom */
+      Unfurl,
+    }),
+    remarkPlugins: [remarkGfm],
+  });
+  const jsxTree = defaultOut(props);
+  const res = renderShimJsxRichTextSection(jsxTree);
+  const richTextElements = Array.isArray(res) ? res.flat(Infinity) : [res];
+  return [{
+    type: "rich_text",
+    elements: [{
+      type: "rich_text_section",
+      elements: richTextElements,
+    }],
+  }];
+}
+
+/* Shiki stuff */
 
 let highlighter: HighlighterCore | null = null;
 /* prevents double initialization */
@@ -44,6 +270,8 @@ function highlighterPromise(): Promise<HighlighterCore> {
   inflightHighlighterPromise = _highlighterPromise();
   return inflightHighlighterPromise;
 }
+
+/* Quill stuff */
 
 /* TODO: roundtrip Quill Deltas <-> MDX */
 function adaptDraft(draft: any): string {
@@ -119,7 +347,9 @@ function shimQuillFromEditorView(editorView: EditorView, historyCompartment: Com
     },
     getLength: () => editorView.state.doc.length,
     getContents: (_index?: number, _length?: number) => {
-      return { contents: deltaOpsFromString(editorView.state.doc.toString()) };
+      /* HACK: when sending the message, Slack calls this, but not for storing drafts */
+      // TODO: determine if that assumption always holds
+      return { contents: deltaOpsFromString("\u0091" + editorView.state.doc.toString()) };
     },
     getFormat: (..._args: any[]) => {
       return {};
@@ -198,8 +428,39 @@ function patchLog(api: RopeAPI, x: (...args: any[]) => any, prefix: string): (..
   };
 }
 
+/* plugin */
+
 const init: RopePluginInit = (api) => {
-  const { ComposerAttachments } = api.slack;
+  let unpatchers = [];
+  const { pre, post } = api.webpack.earlyPopulatePrettyWebpackExport("actionCreators::chatPostMessage", m => m?.meta?.name === "chatPostMessage");
+  pre(i => {
+    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", chatPostMessage => (arg: any) => {
+      api.log(`chatPostMessage called with arg`, arg);
+      /* transform message */
+      if (
+        arg?.message?.blocks?.[0]?.type === "rich_text" &&
+        arg.message.blocks[0].elements?.[0]?.type === "rich_text_section" &&
+        arg.message.blocks[0].elements[0].elements?.[0]?.type === "text"
+      ) {
+        const t: string = arg.message.blocks[0].elements[0].elements[0].text;
+        if (t[0] === "\u0091") {
+          try {
+            const newBlocks = evalMdxForSlack(t.substring(1));
+            arg.message.blocks = newBlocks;
+            api.log("chatPostMessage evaluated MDX", t, "into blocks", newBlocks);
+            return chatPostMessage(arg);
+          } catch (e) {
+            api.log("chatPostMessage failed to eval MDX", t, "with error", e, "dropping message");
+            return {type: ""};
+          }
+        }
+      }
+      return chatPostMessage(arg);
+    });
+    unpatchers.push(u);
+  });
+
+  const { ComposerAttachments, BlockKitRenderer } = api.slack;
 
   const unpatchMessageInput = api.react.patchComponentWithTester2(api.slack.MessageInput, props => props.viewContext === "Channel", MessageInput => props => {
     //// temp
@@ -224,7 +485,9 @@ const init: RopePluginInit = (api) => {
     /* state */
     const [shouldStoreDraft, setShouldStoreDraft] = globalThis.React.useState(false);
     const [shouldSendMessage, setShouldSendMessage] = globalThis.React.useState(false);
+    const [shouldRenderPreview, setShouldRenderPreview] = globalThis.React.useState(false);
     const [lastStoredDraft, setLastStoredDraft] = globalThis.React.useState(null);
+    const [preview, setPreview] = globalThis.React.useState(null);
 
     function updateDraft(draft: any, draftId: string, stateSnapshot: EditorState) {
       const d = {
@@ -271,6 +534,13 @@ const init: RopePluginInit = (api) => {
                     return true;
                   },
                 },
+                {
+                  key: "Alt-Enter",
+                  run: (_target) => {
+                    setShouldRenderPreview(true);
+                    return true;
+                  },
+                },
                 indentWithTab,
                 ...historyKeymap,
                 ...defaultKeymap,
@@ -297,6 +567,9 @@ const init: RopePluginInit = (api) => {
           if (draftTimerRef.current)
             clearTimeout(draftTimerRef.current);
           draftTimerRef.current = setTimeout(() => setShouldStoreDraft(true), 2000);
+        });
+        quillShimRef.current.on("text-change", () => {
+          setPreview(null);
         });
 
         // load shiki async
@@ -404,6 +677,21 @@ const init: RopePluginInit = (api) => {
       }
     }, [shouldSendMessage]);
 
+    /* render preview */
+    globalThis.React.useEffect(() => {
+      if (shouldRenderPreview) {
+        try {
+          const r = evalMdxForSlack(editorViewRef.current.state.doc.toString());
+          setPreview(r);
+        } catch (e) {
+          setPreview([
+            { type: "text", text: "Failed to render preview!\n" + e.toString() },
+          ]);
+        }
+        setShouldRenderPreview(false);
+      }
+    }, [shouldRenderPreview]);
+
     /* flex stuff is a hack? but it works */
     return (
       <div style={{display: "flex", flexDirection: "column", gap: "8px"}}>
@@ -418,12 +706,23 @@ const init: RopePluginInit = (api) => {
         <div ref={cmParentEl} style={{display: "flex", flexDirection: "row"}}>
           {placeholderRef.current && props.placeholder && globalThis.ReactDOM.createPortal(props.placeholder, placeholderRef.current)}
         </div>
+        {preview && <BlockKitRenderer
+          blocks={preview}
+          blocksContainerContext="message"
+          clogLinkClick={() => {}}
+          container="message"
+          remountOnUpdate={true}
+        />}
       </div>
     );
   });
 
   return () => {
     unpatchMessageInput();
+    for (const u of unpatchers)
+      u();
+    highlighter?.dispose();
+    highlighter = null;
   };
 };
 
