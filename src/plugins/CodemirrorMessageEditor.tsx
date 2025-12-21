@@ -504,31 +504,19 @@ function patchLog(api: RopeAPI, x: (...args: any[]) => any, prefix: string): (..
 const init: RopePluginInit = (api) => {
   let unpatchers = [];
 
-  const whenCmExtra = f => orig => (...args) => {
-    const delta = args[0];
-    api.log(`${orig.name} called with delta`, delta);
-    if (delta?.ops?.[0]?.attributes?.cmExtra) {
-      api.log(`${orig.name}: passing through cm delta`);
-      return f(delta);
-    }
-    return orig(...args);
-  };
-
-  const { pre: preLinkifyDeltaText } = api.webpack.earlyPopulatePrettyWebpackExport("linkifyDeltaText", m => m?.name === "linkifyDeltaText");
-  preLinkifyDeltaText(i => {
-    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", whenCmExtra(d => d));
-    unpatchers.push(u);
-  });
-
-  const { pre: preBuildChangeDeltaToFixEmbedsInTripleBackticks } = api.webpack.earlyPopulatePrettyWebpackExport("buildChangeDeltaToFixEmbedsInTripleBackticks", m => m?.name === "buildChangeDeltaToFixEmbedsInTripleBackticks");
-  preBuildChangeDeltaToFixEmbedsInTripleBackticks(i => {
-    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", whenCmExtra(_d => ({ ops: [] })));
-    unpatchers.push(u);
-  });
-
-  const { pre: preBuildMarkdownChangeDelta } = api.webpack.earlyPopulatePrettyWebpackExport("buildMarkdownChangeDelta", m => m?.name === "buildMarkdownChangeDelta");
-  preBuildMarkdownChangeDelta(i => {
-    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", whenCmExtra(_d => ({ ops: [] })));
+  const { pre: prePrepareMessage } = api.webpack.earlyPopulatePrettyWebpackExport("prepareMessage", m => m?.meta?.name === "prepareMessage");
+  prePrepareMessage(i => {
+    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", prepareMessage => (...args: any[]) => {
+      api.log(`prepareMessage called with args`, args);
+      const delta = args?.[1]?.delta;
+      if (delta?.ops?.[0]?.attributes?.cmExtra) {
+        api.log(`prepareMessage: passing through cm delta`);
+        return {
+          processedDelta: delta,
+        };
+      }
+      return prepareMessage(...args);
+    });
     unpatchers.push(u);
   });
 
