@@ -29,8 +29,20 @@ function myJsx(type, props, key = undefined) {
 
 let _shim_Fundamental = Symbol.for("_shim_Fundamental");
 
+let _shim_ContextKey = Symbol.for("_shim_ContextKey");
+
+type Context = {
+  unfurlUrls: Set<string>;
+};
+
+function makeContext(): Context {
+  return {
+    unfurlUrls: new Set(),
+  };
+}
+
 /* Renders a "rich text" section (!!) */
-function renderShimJsxRichTextSection(tree) {
+function renderShimJsxRichTextSection(ctx: Context, tree: any) {
   if (typeof tree === "string")
     /* unstyled text element */
     return {
@@ -45,12 +57,16 @@ function renderShimJsxRichTextSection(tree) {
       // ???
       return [];
     if (Array.isArray(tree.props.children))
-      return tree.props.children.map(renderShimJsxRichTextSection);
-    return [renderShimJsxRichTextSection(tree.props.children)];
+      return tree.props.children.map((c: any) => renderShimJsxRichTextSection(ctx, c));
+    return [renderShimJsxRichTextSection(ctx, tree.props.children)];
   }
+  const props2 = {
+    ...(tree.props ?? {}),
+    [_shim_ContextKey]: ctx,
+  };
   if (typeof tree.type === "function") {
     /* "component" */
-    return renderShimJsxRichTextSection(tree.type(tree.props));
+    return renderShimJsxRichTextSection(ctx, tree.type(props2));
   }
   /* a, p, strong, em, del */
   const builtins = {
@@ -62,17 +78,17 @@ function renderShimJsxRichTextSection(tree) {
     del: Builtin__del,
   };
   /* render children */
-  const children = renderShimJsxRichTextSection(myJsx(_shim_Fragment, {
+  const children = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
     children: tree.props.children,
   }));
   let out = children;
   if (tree.type in builtins) {
     const x = builtins[tree.type]({
-      ...tree.props,
+      ...props2,
       children,
     });
     /* rerender */
-    out = renderShimJsxRichTextSection(x);
+    out = renderShimJsxRichTextSection(ctx, x);
   }
   return out;
 }
@@ -85,6 +101,8 @@ function Builtin__a(props) {
   const child = props.children[0];
   if (child && child.type !== "text")
     throw new Error("a only accepts a text child");
+  if (props?.unfurl !== false)
+    (props[_shim_ContextKey] as Context).unfurlUrls.add(props.href);
   return myJsx(_shim_Fundamental, {
     type: "link",
     url: props.href,
@@ -207,8 +225,13 @@ function _shim_jsx_walk_tree(api: RopeAPI, tree, indent=0) {
   }
 }
 
-// returns array of blocks
-function evalMdxForSlack(src: string, props = {}): any {
+type MDXEvalResult = {
+  ctx: Context;
+  blocks: any[];
+};
+
+// returns context and array of blocks
+function evalMdxForSlack(src: string, props = {}): MDXEvalResult {
   /* all in memory so sync should be ok */
   const { default: defaultOut } = evaluateSync(src, {
     format: "mdx",
@@ -230,15 +253,44 @@ function evalMdxForSlack(src: string, props = {}): any {
     remarkPlugins: [remarkGfm],
   });
   const jsxTree = defaultOut(props);
-  const res = renderShimJsxRichTextSection(jsxTree);
+  const ctx = makeContext();
+  const res = renderShimJsxRichTextSection(ctx, jsxTree);
   const richTextElements = Array.isArray(res) ? res.flat(Infinity) : [res];
-  return [{
-    type: "rich_text",
-    elements: [{
-      type: "rich_text_section",
-      elements: richTextElements,
+  return {
+    ctx,
+    blocks: [{
+      type: "rich_text",
+      elements: [{
+        type: "rich_text_section",
+        elements: richTextElements,
+      }],
     }],
-  }];
+  };
+}
+
+function evalMdxForSlackOrGetErrorBlocks(src: string, props = {}): {
+  result: MDXEvalResult;
+} | {
+  error: any[];
+} {
+  try {
+    return {
+      result: evalMdxForSlack(src, props),
+    };
+  } catch (e) {
+    return {
+      error: [{
+        type: "rich_text",
+        elements: [{
+          type: "rich_text_preformatted",
+          elements: [{
+            type: "text",
+            text: "Failed to render MDX:\n" + e.toString(),
+          }],
+        }],
+      }],
+    };
+  }
 }
 
 /* Shiki stuff */
@@ -287,9 +339,14 @@ function adaptDraft(draft: any): string {
   return "{/* Raw Quill draft:\n" + JSON.stringify(draft.ops, null, 2) + "\n*/}";
 }
 
-function deltaOpsFromString(s: string): Delta["ops"] {
+function deltaOpsFromString(s: string, cmExtra: any = true): Delta["ops"] {
   return [
-    { insert: s },
+    {
+      insert: s,
+      attributes: {
+        cmExtra,
+      },
+    },
   ];
 }
 
@@ -319,6 +376,9 @@ function shimQuillFromEditorView(editorView: EditorView, historyCompartment: Com
   maybeTriggerMentionAutocomplete?: () => void;
   clearHistory: () => void;
   clear: () => void;
+
+  /* For us */
+  cmExtra?: MDXEvalResult;
 } {
   let listeners = {
     "text-change": new Set<Function>(),
@@ -352,9 +412,7 @@ function shimQuillFromEditorView(editorView: EditorView, historyCompartment: Com
     },
     getLength: () => editorView.state.doc.length,
     getContents: (_index?: number, _length?: number) => {
-      /* HACK: when sending the message, Slack calls this, but not for storing drafts */
-      // TODO: determine if that assumption always holds
-      return { contents: deltaOpsFromString("\u0091" + editorView.state.doc.toString()) };
+      return { contents: deltaOpsFromString(editorView.state.doc.toString(), shim.cmExtra ?? true) };
     },
     getFormat: (..._args: any[]) => {
       return {};
@@ -396,7 +454,10 @@ function shimQuillFromEditorView(editorView: EditorView, historyCompartment: Com
           insert: "",
         },
       });
+      shim.cmExtra = null;
     },
+    /* custom */
+    cmExtra: null,
   };
 
   // Add listeners
@@ -438,26 +499,41 @@ function patchLog(api: RopeAPI, x: (...args: any[]) => any, prefix: string): (..
 const init: RopePluginInit = (api) => {
   let unpatchers = [];
 
+  const whenCmExtra = f => orig => (...args) => {
+    const delta = args[0];
+    api.log(`${orig.name} called with delta`, delta);
+    if (delta?.ops?.[0]?.attributes?.cmExtra) {
+      api.log(`${orig.name}: passing through cm delta`);
+      return f(delta);
+    }
+    return orig(...args);
+  };
+
   const { pre: preLinkifyDeltaText } = api.webpack.earlyPopulatePrettyWebpackExport("linkifyDeltaText", m => m?.name === "linkifyDeltaText");
   preLinkifyDeltaText(i => {
-    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", linkifyDeltaText => (delta: any, opts?: any) => {
-      //api.log(`linkifyDeltaText called with delta`, delta);
-      if (delta?.ops?.[0]?.insert?.[0] === "\u0091") {
-        //api.log(`passing through cm delta`);
-        return delta;
-      }
-      return linkifyDeltaText(delta, opts);
-    });
+    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", whenCmExtra(d => d));
+    unpatchers.push(u);
+  });
+
+  const { pre: preBuildChangeDeltaToFixEmbedsInTripleBackticks } = api.webpack.earlyPopulatePrettyWebpackExport("buildChangeDeltaToFixEmbedsInTripleBackticks", m => m?.name === "buildChangeDeltaToFixEmbedsInTripleBackticks");
+  preBuildChangeDeltaToFixEmbedsInTripleBackticks(i => {
+    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", whenCmExtra(_d => ({ ops: [] })));
+    unpatchers.push(u);
+  });
+
+  const { pre: preBuildMarkdownChangeDelta } = api.webpack.earlyPopulatePrettyWebpackExport("buildMarkdownChangeDelta", m => m?.name === "buildMarkdownChangeDelta");
+  preBuildMarkdownChangeDelta(i => {
+    const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", whenCmExtra(_d => ({ ops: [] })));
     unpatchers.push(u);
   });
 
   const { pre: preConvertDeltaToBlocks } = api.webpack.earlyPopulatePrettyWebpackExport("convertDeltaToBlocks", m => m?.name === "convertDeltaToBlocks");
   preConvertDeltaToBlocks(i => {
     const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", convertDeltaToBlocks => (arg: any) => {
-      //api.log(`convertDeltaToBlocks called with arg`, arg);
-      if (arg?.delta?.ops?.[0]?.insert?.[0] === "\u0091") {
+      api.log(`convertDeltaToBlocks called with arg`, arg);
+      if (arg?.delta?.ops?.[0]?.attributes?.cmExtra) {
         const t = arg.delta.ops[0].insert;
-        //api.log(`passing through cm text`, t);
+        api.log(`passing through cm text`, t);
         return {
           blocks: [{
             type: "rich_text",
@@ -466,6 +542,7 @@ const init: RopePluginInit = (api) => {
               elements: [{
                 type: "text",
                 text: t,
+                cmExtra: arg.delta.ops[0].attributes.cmExtra,
               }],
             }],
           }],
@@ -479,25 +556,19 @@ const init: RopePluginInit = (api) => {
   const { pre: preChatPostMessage } = api.webpack.earlyPopulatePrettyWebpackExport("actionCreators::chatPostMessage", m => m?.meta?.name === "chatPostMessage");
   preChatPostMessage(i => {
     const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", chatPostMessage => (arg: any) => {
-      api.log(`chatPostMessage called with arg`, arg);
+      api.log(`chatPostMessage called with arg`, arg, `original blocks`, arg?.message?.blocks);
       /* transform message */
       if (
         arg?.message?.blocks?.[0]?.type === "rich_text" &&
         arg.message.blocks[0].elements?.[0]?.type === "rich_text_section" &&
-        arg.message.blocks[0].elements[0].elements?.[0]?.type === "text"
+        arg.message.blocks[0].elements[0].elements?.[0]?.cmExtra
       ) {
-        const t: string = arg.message.blocks[0].elements[0].elements[0].text;
-        if (t[0] === "\u0091") {
-          try {
-            const newBlocks = evalMdxForSlack(t.substring(1));
-            arg.message.blocks = newBlocks;
-            api.log("chatPostMessage evaluated MDX", t, "into blocks", newBlocks);
-            return chatPostMessage(arg);
-          } catch (e) {
-            api.log("chatPostMessage failed to eval MDX", t, "with error", e, "dropping message");
-            return {type: ""};
-          }
-        }
+        const extra: MDXEvalResult = arg.message.blocks[0].elements[0].elements[0].cmExtra;
+        arg.message.blocks = extra.blocks;
+        arg.message.unfurl = [
+          ...[...extra.ctx.unfurlUrls].map(u => ({url: u}))
+        ];
+        return chatPostMessage(arg);
       }
       return chatPostMessage(arg);
     });
@@ -716,7 +787,13 @@ const init: RopePluginInit = (api) => {
     /* send message */
     globalThis.React.useEffect(() => {
       if (shouldSendMessage) {
-        props.sendMessage?.();
+        const res = evalMdxForSlackOrGetErrorBlocks(editorViewRef.current.state.doc.toString());
+        if ("error" in res) {
+          setPreview(res.error);
+        } else {
+          quillShimRef.current.cmExtra = res.result;
+          props.sendMessage?.();
+        }
         setShouldSendMessage(false);
       }
     }, [shouldSendMessage]);
@@ -724,13 +801,11 @@ const init: RopePluginInit = (api) => {
     /* render preview */
     globalThis.React.useEffect(() => {
       if (shouldRenderPreview) {
-        try {
-          const r = evalMdxForSlack(editorViewRef.current.state.doc.toString());
-          setPreview(r);
-        } catch (e) {
-          setPreview([
-            { type: "text", text: "Failed to render preview!\n" + e.toString() },
-          ]);
+        const res = evalMdxForSlackOrGetErrorBlocks(editorViewRef.current.state.doc.toString());
+        if ("error" in res) {
+          setPreview(res.error);
+        } else {
+          setPreview(res.result.blocks);
         }
         setShouldRenderPreview(false);
       }
