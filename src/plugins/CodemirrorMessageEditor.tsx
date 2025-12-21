@@ -678,11 +678,13 @@ const init: RopePluginInit = (api) => {
         api.log(`modified MessageInput mounted codemirror editor`, editorViewRef.current);
 
         quillShimRef.current = shimQuillFromEditorView(editorViewRef.current, historyCompartmentRef.current, shimCompartmentRef.current);
-        quillShimRef.current.on("editor-change", () => {
+        function startDraftTimer() {
           if (draftTimerRef.current)
             clearTimeout(draftTimerRef.current);
           draftTimerRef.current = setTimeout(() => setShouldStoreDraft(true), 2000);
-        });
+        }
+        quillShimRef.current.on("editor-change", startDraftTimer);
+        startDraftTimer();
         quillShimRef.current.on("text-change", () => {
           setPreview(null);
         });
