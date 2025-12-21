@@ -76,6 +76,7 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any) {
     strong: Builtin__strong,
     em: Builtin__em,
     del: Builtin__del,
+    code: Builtin__code,
   };
   /* render children */
   const children = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
@@ -137,6 +138,10 @@ function Builtin__em(props) {
 
 function Builtin__del(props) {
   return Builtin__addStyle("del", "strike", props);
+}
+
+function Builtin__code(props) {
+  return Builtin__addStyle("code", "code", props);
 }
 
 /* fundamental custom components */
