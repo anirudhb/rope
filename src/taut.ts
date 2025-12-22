@@ -114,11 +114,11 @@ export type TautConfig = {
  */
 export abstract class TautPlugin {
   /** The display name of the plugin. */
-  abstract name: string
+  static readonly pluginName: string
   /** A short description of the plugin in mrkdwn format. */
-  abstract description: string
+  static readonly description: string
   /** The authors of the plugin in mrkdwn format, using <@user_id> syntax. */
-  abstract authors: string
+  static readonly authors: string
 
   /**
    * @param api - The TautAPI instance for plugin communication
@@ -149,25 +149,25 @@ export abstract class TautPlugin {
    */
   protected log = this._log.bind(this)
   protected _log(...args: any[]) {
-    console.log(`[Rope-compat-Taut] [${this.constructor.name}]`, ...args)
+    console.log(`[Rope-compat-Taut] [${(this.constructor as typeof TautPlugin).pluginName}]`, ...args)
   }
 }
 
 export default TautPlugin
-export type TautPluginConstructor = new (
-  api: TautAPI,
-  config: TautPluginConfig
-) => TautPlugin
+export interface TautPluginConstructor {
+  new (api: TautAPI, config: TautPluginConfig): TautPlugin;
+  readonly pluginName: string;
+  readonly description: string;
+  readonly authors: string;
+}
 
 // plugin adapter
 
 export function adaptTautPlugin(pc: TautPluginConstructor): RopePlugin {
-  /* instantiate once to get meta */
-  let p = new pc({} as any, null);
   const meta = {
-    name: `[Rope-compat-taut] ${p.name}`,
-    description: p.description,
-    authors: p.authors,
+    name: `[Rope-compat-taut] ${pc.pluginName}`,
+    description: pc.description,
+    authors: pc.authors,
   };
 
   const init = (api: RopeAPI, config: any) => {
