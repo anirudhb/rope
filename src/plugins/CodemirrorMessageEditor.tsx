@@ -28,8 +28,16 @@ function myJsx(type, props, key = undefined) {
 }
 
 let _shim_Fundamental = Symbol.for("_shim_Fundamental");
+let _shim_FundamentalLate = Symbol.for("_shim_FundamentalLate");
+
+let _shim_Blocks = Symbol.for("_shim_Blocks");
 
 let _shim_ContextKey = Symbol.for("_shim_ContextKey");
+let _shim_IsBlockKey = Symbol.for("_shim_IsBlockKey");
+let _shim_IsRichTextSubsectionKey = Symbol.for("_shim_IsRichTextSubsectionKey");
+
+let _shim_IsSectionLikeComponent = Symbol.for("_shim_IsSectionLikeComponent");
+let _shim_IsBlockLikeComponent = Symbol.for("_shim_IsBlockLikeComponent");
 
 type Context = {
   unfurlUrls: Set<string>;
@@ -39,6 +47,37 @@ function makeContext(): Context {
   return {
     unfurlUrls: new Set(),
   };
+}
+
+/* Renders blocks */
+function renderShimJsxBlocks(ctx: Context, tree: any) {
+  if (tree.type === _shim_Blocks) {
+    /* render blocks inside and VALIDATE */
+    const children = Array.isArray(tree.props.children) ? tree.props.children : [tree.props.children];
+    const renderedChildren = children.map(c => renderShimJsxBlocks(ctx, c)).flat(Infinity);
+    for (const cx of renderedChildren)
+      if (cx[_shim_IsBlockKey] !== true)
+        throw new Error(`Blocks child was not a block! Got ${cx}`);
+    return renderedChildren;
+  }
+  const props2 = {
+    ...(tree.props ?? {}),
+    [_shim_ContextKey]: ctx,
+  };
+  if (typeof tree.type === "function")
+    return renderShimJsxBlocks(ctx, tree.type(props2));
+  return tree;
+}
+
+/* Renders rich text subsections */
+function renderShimJsxRichTextSubsection(ctx: Context, tree: any) {
+  const props2 = {
+    ...(tree.props ?? {}),
+    [_shim_ContextKey]: ctx,
+  };
+  if (typeof tree.type === "function")
+    return tree.type(props2);
+  throw new Error(`rich_text subsection: don't know how to render jsx element of type ${tree.type} ${tree}`);
 }
 
 /* Renders a "rich text" section (!!) */
@@ -52,6 +91,13 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any) {
   if (tree.type === _shim_Fundamental)
     /* fundamental, passthrough */
     return tree.props;
+  if (tree.type === _shim_FundamentalLate) {
+    /* late fundamental, render children first */
+    const children = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
+      children: tree.props.children,
+    }));
+    return tree.props.value(children);
+  }
   if (tree.type === _shim_Fragment) {
     if (!tree.props?.children)
       // ???
@@ -64,68 +110,127 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any) {
     ...(tree.props ?? {}),
     [_shim_ContextKey]: ctx,
   };
-  if (typeof tree.type === "function") {
-    /* "component" */
-    return renderShimJsxRichTextSection(ctx, tree.type(props2));
-  }
-  /* a, p, strong, em, del */
   const builtins = {
     a: Builtin__a,
-    //Toplevel: Builtin__Toplevel,
     p: Builtin__p,
     strong: Builtin__strong,
     em: Builtin__em,
     del: Builtin__del,
     code: Builtin__code,
   };
-  /* render children */
-  const children = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
-    children: tree.props.children,
-  }));
-  let out = children;
-  if (tree.type in builtins) {
-    const x = builtins[tree.type]({
-      ...props2,
-      children,
-    });
-    /* rerender */
-    out = renderShimJsxRichTextSection(ctx, x);
+  if (tree.type in builtins)
+    tree.type = builtins[tree.type];
+  if (typeof tree.type === "function") {
+    /* "component" */
+    return renderShimJsxRichTextSection(ctx, tree.type(props2));
   }
+  if (tree[_shim_IsRichTextSubsectionKey])
+    /* passthrough */
+    return tree;
+  throw new Error(`renderShimJsxRichTextSection: don't know how to render this jsx component: ${tree.type} with props ${tree.props}`);
+}
+
+/* Block/section components */
+
+function Blocks(props) {
+  return myJsx(_shim_Blocks, props);
+}
+
+function RichText(props) {
+  // Render children and check that they are sections
+  if (!props.children)
+    throw new Error(`RichText requires at least one child`);
+  const children = Array.isArray(props.children) ? props.children : [props.children];
+  const ctx = props[_shim_ContextKey];
+  const renderedChildren = children.map(c => renderShimJsxRichTextSubsection(ctx, c)).flat(Infinity);
+  for (const cx of renderedChildren)
+    if (!cx[_shim_IsRichTextSubsectionKey])
+      throw new Error(`Rich text child was not a valid subsection!`);
+  return {
+    type: "rich_text",
+    elements: renderedChildren,
+    [_shim_IsBlockKey]: true,
+  };
+}
+RichText[_shim_IsBlockLikeComponent] = true;
+
+function RichTextSection(props) {
+  /* Render children */
+  const ctx = props[_shim_ContextKey];
+  const renderedChildren = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
+    children: props.children,
+  })).flat(Infinity);
+  let out = [];
+  let normalChildRun = [];
+
+  function clearRun() {
+    out.push({
+      type: "rich_text_section",
+      elements: normalChildRun,
+      [_shim_IsRichTextSubsectionKey]: true,
+    });
+    normalChildRun = [];
+  }
+
+  for (const cx of renderedChildren) {
+    if (cx[_shim_IsRichTextSubsectionKey])
+      if (props.hoist) {
+        clearRun();
+        out.push(cx);
+      } else
+        throw new Error(`rich_text_section: got subsection child ${cx} but not hoisting!`);
+    else
+      normalChildRun.push(cx);
+  }
+  clearRun();
+
   return out;
 }
+RichTextSection[_shim_IsSectionLikeComponent] = true;
 
 /* built-in components get children rendered as fragment (array) */
 
 function Builtin__a(props) {
-  if (props.children.length > 1)
-    throw new Error("a only accepts up to a single child");
-  const child = props.children[0];
-  if (child && child.type !== "text")
-    throw new Error("a only accepts a text child");
-  if (props?.unfurl !== false)
-    (props[_shim_ContextKey] as Context).unfurlUrls.add(props.href);
-  return myJsx(_shim_Fundamental, {
-    type: "link",
-    url: props.href,
-    text: child?.text,
-    unsafe: props.unsafe,
-    style: child?.style,
+  return myJsx(_shim_FundamentalLate, {
+    value: children => {
+      if (children.length > 1)
+        throw new Error("a only accepts up to a single child");
+      const child = children[0];
+      if (child && child.type !== "text")
+        throw new Error("a only accepts a text child");
+      if (props?.unfurl !== false)
+        (props[_shim_ContextKey] as Context).unfurlUrls.add(props.href);
+      return {
+        type: "link",
+        url: props.href,
+        /* for exact linkifys don't duplicate the link twice */
+        text: child?.text === props.href ? undefined : child?.text,
+        unsafe: props.unsafe,
+        style: child?.style,
+      };
+    },
   });
 }
 
 function Builtin__p(props) {
   /* do nothing */
-  return myJsx(_shim_Fundamental, props.children);
+  return myJsx(_shim_FundamentalLate, {
+    children: props.children,
+    value: children => children,
+  });
 }
 
 function Builtin__addStyle(name, style, props) {
-  return myJsx(_shim_Fundamental, props.children.map(child => ({
-    ...child,
-    style: {
-      ...(child.style ?? {}),
-      [style]: true,
-    },
-  })));
+  return myJsx(_shim_FundamentalLate, {
+    children: props.children,
+    value: children => children.map(child => ({
+      ...child,
+      style: {
+        ...(child.style ?? {}),
+        [style]: true,
+      },
+    })),
+  });
 }
 
 function Builtin__strong(props) {
@@ -199,6 +304,10 @@ function Fundamental(props) {
   return myJsx(_shim_Fundamental, props.raw);
 }
 
+function FundamentalLate(props) {
+  return myJsx(_shim_FundamentalLate, props);
+}
+
 /* "custom" components */
 
 function Unfurl(props) {
@@ -211,7 +320,9 @@ function Unfurl(props) {
 // TODO: "Mention" component that unifies some of the above
 
 // debug
-function _shim_jsx_walk_tree(api: RopeAPI, tree, indent=0) {
+function _shim_jsx_walk_tree(tree, indent=0, api = null) {
+  if (!api)
+    api = console;
   if (typeof tree !== "object") {
     api.log(" ".repeat(indent), tree);
     return;
@@ -226,7 +337,7 @@ function _shim_jsx_walk_tree(api: RopeAPI, tree, indent=0) {
     : [];
   for (const c of children) {
     api.log(" ".repeat(indent+1), "child:");
-    _shim_jsx_walk_tree(api, c, indent+2);
+    _shim_jsx_walk_tree(c, indent+2, api);
   }
 }
 
@@ -244,6 +355,10 @@ function evalMdxForSlack(src: string, props = {}): MDXEvalResult {
     jsx: myJsx,
     jsxs: myJsx,
     useMDXComponents: () => ({
+      /* blocks/sections */
+      Blocks,
+      RichText,
+      RichTextSection,
       /* custom/fundamental */
       Broadcast,
       Color,
@@ -252,24 +367,42 @@ function evalMdxForSlack(src: string, props = {}): MDXEvalResult {
       User,
       Usergroup,
       Fundamental,
+      FundamentalLate,
       /* custom */
       Unfurl,
     }),
     remarkPlugins: [remarkGfm],
   });
-  const jsxTree = defaultOut(props);
+  let jsxTree = defaultOut(props);
+  if (jsxTree.type[_shim_IsSectionLikeComponent])
+    throw new Error(`Toplevel is a section! Try wrapping it in <RichText /> (or other block) and <Blocks />`);
+  if (jsxTree.type[_shim_IsBlockLikeComponent]) {
+    jsxTree = myJsx(Blocks, {
+      children: jsxTree,
+    });
+  }
+  if (jsxTree.type === _shim_Fragment && jsxTree.props?.children?.[0]?.type?.[_shim_IsBlockLikeComponent]) {
+    jsxTree = myJsx(Blocks, {
+      children: jsxTree,
+    });
+  }
+  if (jsxTree.type !== Blocks) {
+    /* wrap in rich text */
+    jsxTree = myJsx(Blocks, {
+      children: myJsx(RichText, {
+        children: myJsx(RichTextSection, {
+          children: jsxTree,
+          hoist: true,
+        }),
+      }),
+    });
+  }
+  //_shim_jsx_walk_tree(jsxTree);
   const ctx = makeContext();
-  const res = renderShimJsxRichTextSection(ctx, jsxTree);
-  const richTextElements = Array.isArray(res) ? res.flat(Infinity) : [res];
+  const res = renderShimJsxBlocks(ctx, jsxTree);
   return {
     ctx,
-    blocks: [{
-      type: "rich_text",
-      elements: [{
-        type: "rich_text_section",
-        elements: richTextElements,
-      }],
-    }],
+    blocks: res,
   };
 }
 
