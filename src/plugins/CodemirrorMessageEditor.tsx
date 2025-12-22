@@ -889,9 +889,10 @@ const init: RopePluginInit = (api) => {
       }
     }, [shouldStoreDraft]);
 
-    /* clear draft when unmounted or draft id changes */
-    globalThis.React.useEffect(() => {
-      return () => {
+    /* clear draft when unmounted or draft id changes
+      useLayoutEffect so that we still have props in cleanup */
+    globalThis.React.useLayoutEffect(() => {
+      const f = () => {
         if (lastStoredDraft?.ops[0].insert === "") {
           props.clearDrafts({
             ids: [lastStoredDraft.client_draft_id],
@@ -899,6 +900,8 @@ const init: RopePluginInit = (api) => {
           });
         }
       };
+      f();
+      return f;
     }, [props.draftId]);
 
     /* forward quill shim as ref */
