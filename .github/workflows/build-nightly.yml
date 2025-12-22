@@ -30,7 +30,7 @@ jobs:
       - name: Prepare Taut plugins
         run: |
           git clone https://github.com/jeremy46231/taut
-          (cd taut && git checkout 162293a4ed8c18e382e6f0157f4161586170e789)
+          (cd taut && git checkout d2ce7e1e0252a21389cca21df8a04f215c3b55e5)
           mkdir -p src/plugins/taut/
           for p in taut/plugins/*; do
             plugin="$(basename "$p")"
