@@ -120,6 +120,7 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any, allowHoist = fals
     ul: Builtin__ul,
     ol: Builtin__ol,
     pre: RichTextPreformatted,
+    blockquote: RichTextQuote,
   };
   if (tree.type in builtins)
     tree.type = builtins[tree.type];
@@ -139,7 +140,11 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any, allowHoist = fals
 /* Block/section components */
 
 function Blocks(props) {
-  return myJsx(_shim_Blocks, props);
+  return myJsx(_shim_Blocks, {
+    ...props,
+    // MDX adds these for some reason
+    children: Array.isArray(props.children) ? props.children.filter(c => typeof c !== "string") : props.children,
+  });
 }
 
 function RichText(props) {
@@ -179,11 +184,12 @@ function RichTextSection(props) {
   let normalChildRun = [];
 
   function clearRun() {
-    out.push({
-      type: "rich_text_section",
-      elements: normalChildRun,
-      [_shim_IsRichTextSubsectionKey]: true,
-    });
+    if (normalChildRun.length)
+      out.push({
+        type: "rich_text_section",
+        elements: normalChildRun,
+        [_shim_IsRichTextSubsectionKey]: true,
+      });
     normalChildRun = [];
   }
 
@@ -217,8 +223,10 @@ RichTextPreformatted[_shim_IsSectionLikeComponent] = true;
 
 function RichTextQuote(props) {
   const ctx = props[_shim_ContextKey];
+  // hack
+  const children = props.children?.[0] === "\n" ? props.children.slice(1) : props.children;
   const renderedChildren = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
-    children: props.children,
+    children,
   })).flat(Infinity);
 
   return {
@@ -237,11 +245,14 @@ function RichTextList(props) {
   const children = Array.isArray(props.children) ? props.children : [props.children];
   const out = [];
   for (const c of children) {
+    if (typeof c === "string")
+      // MDX inserts these for some reason
+      continue;
     if (c.type !== "li")
       throw new Error(`RichTextList children can only be <li>`);
-    out.push(renderShimJsxRichTextSection(ctx, myJsx(RichTextSection, {
+    out.push(renderShimJsxRichTextSubsection(ctx, myJsx(RichTextSection, {
       children: c.props.children,
-    })).flat(Infinity));
+    }))[0]);
   }
 
   return {
@@ -259,6 +270,7 @@ RichTextList[_shim_IsSectionLikeComponent] = true;
 function Divider() {
   return {
     type: "divider",
+    [_shim_IsBlockKey]: true,
   };
 }
 Divider[_shim_IsBlockLikeComponent] = true;
@@ -272,6 +284,7 @@ function Header(props) {
       type: "plain_text",
       text: props.children,
     },
+    [_shim_IsBlockKey]: true,
   };
 }
 Header[_shim_IsBlockLikeComponent] = true;
@@ -431,24 +444,22 @@ function Unfurl(props) {
 // TODO: "Mention" component that unifies some of the above
 
 // debug
-function _shim_jsx_walk_tree(tree, indent=0, api = null) {
-  if (!api)
-    api = console;
+function _shim_jsx_walk_tree(tree, indent=0) {
   if (typeof tree !== "object") {
-    api.log(" ".repeat(indent), tree);
+    console.log("[Rope] ", " ".repeat(indent), tree);
     return;
   }
-  api.log(" ".repeat(indent), "type:", tree.type, "name:", tree.type?.name);
-  api.log(" ".repeat(indent), "key:", tree.key);
-  api.log(" ".repeat(indent), "props:", JSON.stringify(tree.props));
+  console.log("[Rope] ", " ".repeat(indent), "type:", tree.type, "name:", tree.type?.name);
+  console.log("[Rope] ", " ".repeat(indent), "key:", tree.key);
+  console.log("[Rope] ", " ".repeat(indent), "props:", JSON.stringify(tree.props));
   const children = tree.props?.children
     ? Array.isArray(tree.props.children)
       ? tree.props.children
       : [tree.props.children]
     : [];
   for (const c of children) {
-    api.log(" ".repeat(indent+1), "child:");
-    _shim_jsx_walk_tree(c, indent+2, api);
+    console.log("[Rope] ", " ".repeat(indent+1), "child:");
+    _shim_jsx_walk_tree(c, indent+2);
   }
 }
 
@@ -510,7 +521,7 @@ function evalMdxForSlack(src: string, props = {}): MDXEvalResult {
       }),
     });
   }
-  //_shim_jsx_walk_tree(jsxTree);
+  _shim_jsx_walk_tree(jsxTree);
   const ctx = makeContext();
   const res = renderShimJsxBlocks(ctx, jsxTree);
   return {
