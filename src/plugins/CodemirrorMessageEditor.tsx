@@ -81,7 +81,7 @@ function renderShimJsxRichTextSubsection(ctx: Context, tree: any) {
 }
 
 /* Renders a "rich text" section (!!) */
-function renderShimJsxRichTextSection(ctx: Context, tree: any) {
+function renderShimJsxRichTextSection(ctx: Context, tree: any, allowHoist = false) {
   if (typeof tree === "string")
     /* unstyled text element */
     return {
@@ -95,7 +95,7 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any) {
     /* late fundamental, render children first */
     const children = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
       children: tree.props.children,
-    }));
+    }), allowHoist);
     return tree.props.value(children);
   }
   if (tree.type === _shim_Fragment) {
@@ -103,8 +103,8 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any) {
       // ???
       return [];
     if (Array.isArray(tree.props.children))
-      return tree.props.children.map((c: any) => renderShimJsxRichTextSection(ctx, c));
-    return [renderShimJsxRichTextSection(ctx, tree.props.children)];
+      return tree.props.children.map((c: any) => renderShimJsxRichTextSection(ctx, c, allowHoist));
+    return [renderShimJsxRichTextSection(ctx, tree.props.children, allowHoist)];
   }
   const props2 = {
     ...(tree.props ?? {}),
@@ -117,16 +117,22 @@ function renderShimJsxRichTextSection(ctx: Context, tree: any) {
     em: Builtin__em,
     del: Builtin__del,
     code: Builtin__code,
+    ul: Builtin__ul,
+    ol: Builtin__ol,
+    pre: RichTextPreformatted,
   };
   if (tree.type in builtins)
     tree.type = builtins[tree.type];
   if (typeof tree.type === "function") {
     /* "component" */
-    return renderShimJsxRichTextSection(ctx, tree.type(props2));
+    return renderShimJsxRichTextSection(ctx, tree.type(props2), allowHoist);
   }
   if (tree[_shim_IsRichTextSubsectionKey])
-    /* passthrough */
-    return tree;
+    if (allowHoist)
+      /* passthrough */
+      return tree;
+    else
+      throw new Error(`renderShimJsxRichTextSection: got section child but hoisting is not enabled`);
   throw new Error(`renderShimJsxRichTextSection: don't know how to render this jsx component: ${tree.type} with props ${tree.props}`);
 }
 
@@ -140,7 +146,16 @@ function RichText(props) {
   // Render children and check that they are sections
   if (!props.children)
     throw new Error(`RichText requires at least one child`);
-  const children = Array.isArray(props.children) ? props.children : [props.children];
+  let children;
+  if (props.single) {
+    /* wrap children in a single hoisting RichTextSection */
+    children = [myJsx(RichTextSection, {
+      children: props.children,
+      hoist: true,
+    })];
+  } else {
+    children = Array.isArray(props.children) ? props.children : [props.children];
+  }
   const ctx = props[_shim_ContextKey];
   const renderedChildren = children.map(c => renderShimJsxRichTextSubsection(ctx, c)).flat(Infinity);
   for (const cx of renderedChildren)
@@ -159,7 +174,7 @@ function RichTextSection(props) {
   const ctx = props[_shim_ContextKey];
   const renderedChildren = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
     children: props.children,
-  })).flat(Infinity);
+  }), props.hoist).flat(Infinity);
   let out = [];
   let normalChildRun = [];
 
@@ -173,13 +188,10 @@ function RichTextSection(props) {
   }
 
   for (const cx of renderedChildren) {
-    if (cx[_shim_IsRichTextSubsectionKey])
-      if (props.hoist) {
-        clearRun();
-        out.push(cx);
-      } else
-        throw new Error(`rich_text_section: got subsection child ${cx} but not hoisting!`);
-    else
+    if (cx[_shim_IsRichTextSubsectionKey]) {
+      clearRun();
+      out.push(cx);
+    } else
       normalChildRun.push(cx);
   }
   clearRun();
@@ -187,6 +199,90 @@ function RichTextSection(props) {
   return out;
 }
 RichTextSection[_shim_IsSectionLikeComponent] = true;
+
+function RichTextPreformatted(props) {
+  const ctx = props[_shim_ContextKey];
+  const renderedChildren = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
+    children: props.children,
+  })).flat(Infinity);
+
+  return {
+    type: "rich_text_preformatted",
+    elements: renderedChildren,
+    border: props.border,
+    [_shim_IsRichTextSubsectionKey]: true,
+  };
+}
+RichTextPreformatted[_shim_IsSectionLikeComponent] = true;
+
+function RichTextQuote(props) {
+  const ctx = props[_shim_ContextKey];
+  const renderedChildren = renderShimJsxRichTextSection(ctx, myJsx(_shim_Fragment, {
+    children: props.children,
+  })).flat(Infinity);
+
+  return {
+    type: "rich_text_quote",
+    elements: renderedChildren,
+    border: props.border,
+    [_shim_IsRichTextSubsectionKey]: true,
+  };
+}
+RichTextQuote[_shim_IsSectionLikeComponent] = true;
+
+function RichTextList(props) {
+  const ctx = props[_shim_ContextKey];
+  if (!props.children)
+    throw new Error(`RichTextList requires at least one child`);
+  const children = Array.isArray(props.children) ? props.children : [props.children];
+  const out = [];
+  for (const c of children) {
+    if (c.type !== "li")
+      throw new Error(`RichTextList children can only be <li>`);
+    out.push(renderShimJsxRichTextSection(ctx, myJsx(RichTextSection, {
+      children: c.props.children,
+    })).flat(Infinity));
+  }
+
+  return {
+    type: "rich_text_list",
+    style: props.style,
+    elements: out,
+    indent: props.indent,
+    offset: props.offset,
+    border: props.border,
+    [_shim_IsRichTextSubsectionKey]: true,
+  };
+}
+RichTextList[_shim_IsSectionLikeComponent] = true;
+
+function Divider() {
+  return {
+    type: "divider",
+  };
+}
+Divider[_shim_IsBlockLikeComponent] = true;
+
+function Header(props) {
+  if (typeof props.children !== "string")
+    throw new Error(`Header only takes a single string child`);
+  return {
+    type: "header",
+    text: {
+      type: "plain_text",
+      text: props.children,
+    },
+  };
+}
+Header[_shim_IsBlockLikeComponent] = true;
+
+function FundamentalBlock(props) {
+  return {
+    ...props.raw,
+    [_shim_IsBlockKey]: true,
+  };
+}
+FundamentalBlock[_shim_IsBlockLikeComponent] = true;
 
 /* built-in components get children rendered as fragment (array) */
 
@@ -247,6 +343,21 @@ function Builtin__del(props) {
 
 function Builtin__code(props) {
   return Builtin__addStyle("code", "code", props);
+}
+
+function Builtin__list(style, props) {
+  return myJsx(RichTextList, {
+    ...props,
+    style,
+  });
+}
+
+function Builtin__ol(props) {
+  return Builtin__list("ordered", props);
+}
+
+function Builtin__ul(props) {
+  return Builtin__list("bullet", props);
 }
 
 /* fundamental custom components */
@@ -359,6 +470,12 @@ function evalMdxForSlack(src: string, props = {}): MDXEvalResult {
       Blocks,
       RichText,
       RichTextSection,
+      RichTextPreformatted,
+      RichTextList,
+      RichTextQuote,
+      Divider,
+      Header,
+      FundamentalBlock,
       /* custom/fundamental */
       Broadcast,
       Color,
@@ -382,18 +499,14 @@ function evalMdxForSlack(src: string, props = {}): MDXEvalResult {
     });
   }
   if (jsxTree.type === _shim_Fragment && jsxTree.props?.children?.[0]?.type?.[_shim_IsBlockLikeComponent]) {
-    jsxTree = myJsx(Blocks, {
-      children: jsxTree,
-    });
+    jsxTree.type = Blocks;
   }
   if (jsxTree.type !== Blocks) {
     /* wrap in rich text */
     jsxTree = myJsx(Blocks, {
       children: myJsx(RichText, {
-        children: myJsx(RichTextSection, {
-          children: jsxTree,
-          hoist: true,
-        }),
+        children: jsxTree,
+        single: true,
       }),
     });
   }
