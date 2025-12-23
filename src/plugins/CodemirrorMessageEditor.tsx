@@ -470,6 +470,11 @@ type MDXEvalResult = {
 
 // returns context and array of blocks
 function evalMdxForSlack(src: string, props = {}): MDXEvalResult {
+  if (src === "")
+    return {
+      ctx: makeContext(),
+      blocks: [],
+    };
   /* all in memory so sync should be ok */
   const { default: defaultOut } = evaluateSync(src, {
     format: "mdx",
@@ -592,6 +597,8 @@ function highlighterPromise(): Promise<HighlighterCore> {
 
 /* Quill stuff */
 
+const _sym_cmExtra = Symbol.for("cmExtra");
+
 /* TODO: roundtrip Quill Deltas <-> MDX */
 function adaptDraft(draft: any): string {
   if (!draft)
@@ -606,7 +613,7 @@ function deltaOpsFromString(s: string, cmExtra: any = true): Delta["ops"] {
     {
       insert: s,
       attributes: {
-        cmExtra,
+        [_sym_cmExtra]: cmExtra,
       },
     },
   ];
@@ -766,7 +773,7 @@ const init: RopePluginInit = (api) => {
     const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", prepareMessage => (...args: any[]) => {
       api.log(`prepareMessage called with args`, args);
       const delta = args?.[1]?.delta;
-      if (delta?.ops?.[0]?.attributes?.cmExtra) {
+      if (delta?.ops?.[0]?.attributes?.[_sym_cmExtra]) {
         api.log(`prepareMessage: passing through cm delta`);
         return {
           processedDelta: delta,
@@ -781,9 +788,12 @@ const init: RopePluginInit = (api) => {
   preConvertDeltaToBlocks(i => {
     const u = api.webpack.insertWebpackPatch(i, "CodemirrorMessageEditor", convertDeltaToBlocks => (arg: any) => {
       api.log(`convertDeltaToBlocks called with arg`, arg);
-      if (arg?.delta?.ops?.[0]?.attributes?.cmExtra) {
+      if (arg?.delta?.ops?.[0]?.attributes?.[_sym_cmExtra]) {
+        // TODO: pull out blocks here
         const t = arg.delta.ops[0].insert;
         api.log(`passing through cm text`, t);
+        if (t === "")
+          return { blocks: [] };
         return {
           blocks: [{
             type: "rich_text",
@@ -792,7 +802,7 @@ const init: RopePluginInit = (api) => {
               elements: [{
                 type: "text",
                 text: t,
-                cmExtra: arg.delta.ops[0].attributes.cmExtra,
+                [_sym_cmExtra]: arg.delta.ops[0].attributes[_sym_cmExtra],
               }],
             }],
           }],
@@ -811,9 +821,9 @@ const init: RopePluginInit = (api) => {
       if (
         arg?.message?.blocks?.[0]?.type === "rich_text" &&
         arg.message.blocks[0].elements?.[0]?.type === "rich_text_section" &&
-        arg.message.blocks[0].elements[0].elements?.[0]?.cmExtra
+        arg.message.blocks[0].elements[0].elements?.[0]?.[_sym_cmExtra]
       ) {
-        const extra: MDXEvalResult = arg.message.blocks[0].elements[0].elements[0].cmExtra;
+        const extra: MDXEvalResult = arg.message.blocks[0].elements[0].elements[0][_sym_cmExtra];
         arg.message.blocks = extra.blocks;
         arg.message.unfurl = [
           ...[...extra.ctx.unfurlUrls].map(u => ({url: u}))
