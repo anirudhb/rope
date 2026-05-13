@@ -60,6 +60,7 @@ export type RopePatchedObject = {
   exportId: WebpackExportId;
   debugName: string;
   patch: (require: _3type_webpack_require_type, orig: any) => any;
+  dependencies?: WebpackExportId[];
 };
 /**
  * Creates and consolidates patches from a list of patched objects.
@@ -84,7 +85,7 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
   return Object.entries(patchesByModuleId).map(([moduleId, patches]) => ({
     moduleId,
     debugName: `rope-consolidated-${moduleId}`,
-    patch: (origModule) => function(module, exports, require) {
+    patch: (origModule) => async function(module, exports, require) {
       console.log(`[Rope] Running consolidated patch for module id ${moduleId}`);
 
       const module2 = {};
@@ -104,6 +105,8 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
       if (module.exports) {
         for (const rp of patches.root) {
           console.log(`[Rope] Running root patch ${rp.debugName} for module id ${moduleId}`);
+          const dependentChunkIds = (rp.dependencies ?? []).map(x=>x.moduleId.chunkIds).flat();
+          await Promise.all(dependentChunkIds.map(x=>(require as any).e(x)));
           module.exports = rp.patch(require, module.exports);
         }
       }
@@ -126,6 +129,8 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
 
         for (const pp of patches2) {
           console.log(`[Rope] Running property patch ${pp.debugName} for property ${prop} of module ${moduleId}`);
+          const dependentChunkIds = (pp.dependencies ?? []).map(x=>x.moduleId.chunkIds).flat();
+          await Promise.all(dependentChunkIds.map(x=>(require as any).e(x)));
           setProp(pp.patch(require, getProp()));
         }
       }

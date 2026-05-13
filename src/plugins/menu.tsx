@@ -42,6 +42,7 @@ export default plugins.wirePlugin({
       }, */{
       debugName: "rope-menu-tabs-patch",
       exportId: TabsWithWindowRefI,
+      dependencies: [ReactI, MrkdwnElementI, FieldSetI, LegendI, LabelI],
       patch: (require, Tabs: WebpackImported<typeof TabsWithWindowRefI>) => {
         const React = api.webpack.requireWebpackExport(require, ReactI);
         const MrkdwnElement = api.webpack.requireWebpackExport(require, MrkdwnElementI);
@@ -55,7 +56,7 @@ export default plugins.wirePlugin({
           function reloadPluginsList() {
             setPlugins_([...plugins.__ropePluginRegistry.values()]);
           }
-          globalThis.React.useEffect(reloadPluginsList, [[...plugins.__ropePluginRegistry.keys()]]);
+          React.useEffect(reloadPluginsList, [[...plugins.__ropePluginRegistry.keys()]]);
 
           return <FieldSet id="rope-plugins-list">
             <Legend className="margin_bottom_100">Rope plugins</Legend>
