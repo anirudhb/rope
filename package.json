@@ -16,6 +16,7 @@
 		"@types/react": "^19.2.7",
 		"@types/react-dom": "^19.2.3",
 		"codemirror-shiki": "^0.3.0",
+		"js-sha256": "^0.11.1",
 		"jspatching": "link:jspatching",
 		"quill": "^2.0.3",
 		"remark-gfm": "^4.0.1",

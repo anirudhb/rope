@@ -38,6 +38,9 @@ importers:
       codemirror-shiki:
         specifier: ^0.3.0
         version: 0.3.0(@codemirror/state@6.5.2)(@codemirror/view@6.39.4)(shiki@3.20.0)
+      js-sha256:
+        specifier: ^0.11.1
+        version: 0.11.1
       jspatching:
         specifier: link:jspatching
         version: link:jspatching
@@ -286,6 +289,9 @@ packages:
   is-plain-obj@4.1.0:
     resolution: {integrity: sha512-+Pgi+vMuUNkJyExiMBt5IlFoMyKnr5zhJ4Uspz58WOhBF5QoIZkFyNHIbBAtHwzVAgk5RtndVNsDRN61/mmDqg==}
     engines: {node: '>=12'}
+
+  js-sha256@0.11.1:
+    resolution: {integrity: sha512-o6WSo/LUvY2uC4j7mO50a2ms7E/EAdbP0swigLV+nzHKTTaYnaLIWJ02VdXrsJX0vGedDESQnLsOekr94ryfjg==}
 
   lodash-es@4.17.22:
     resolution: {integrity: sha512-XEawp1t0gxSi9x01glktRZ5HDy0HXqrM0x5pXQM98EaI0NxO6jVM7omDOxsuEo5UIASAnm2bRp1Jt/e0a2XU8Q==}
@@ -911,6 +917,8 @@ snapshots:
   is-hexadecimal@2.0.1: {}
 
   is-plain-obj@4.1.0: {}
+
+  js-sha256@0.11.1: {}
 
   lodash-es@4.17.22: {}
 
