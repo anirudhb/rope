@@ -19,6 +19,9 @@ export function lookupWebpackModulesBulk(chunkName: string, matchers: Record<str
       let id = foundModules.get(matcher);
       if (typeof id === "undefined") {
         id = tryFindWebpackExportId(chunkName, matcher);
+        if (id === null) {
+          throw new Error(`[Rope] Failed to find webpack export id for ${k1}.${k2}!`);
+        }
         foundModules.set(matcher, id);
       }
       out[k1][k2] = id;

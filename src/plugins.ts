@@ -1,20 +1,21 @@
 /** Plugin loader and manager */
 import * as webpack from "jspatching/webpack";
 import * as react from "jspatching/react";
-import * as redux from "jspatching/redux";
-import * as slack from "./slack"
 import type { RopeAPI, RopePlugin } from "./api";
+import { hashWebpackMatchers, lookupWebpackModulesBulk } from "./patch";
 
 /* convenient */
 export type { RopePlugin } from "./api";
 
-export type RopePluginRegistration = {
-  plugin: RopePlugin & {
-    defaultConfig?: any;
-  };
-  /* when not null, plugin is loaded */
-  destroy?: () => void;
-};
+const chunkName = "webpackChunkwebapp";
+
+export function wirePlugin<
+  const I extends {},
+  const P extends Omit<RopePlugin<C, I>, "imports">,
+  C = undefined
+>(i: I, p: P): RopePlugin<C, I> {
+  return ({ ...p, imports: i }) as any;
+}
 
 type PersistedRopePluginInfo = {
   id: string;
@@ -22,7 +23,7 @@ type PersistedRopePluginInfo = {
   config?: any;
 };
 
-export let __ropePluginRegistry = new Map<string, RopePluginRegistration>();
+export let __ropePluginRegistry = new Map<string, RopePlugin & { defaultConfig?: any; }>();
 
 if (globalThis.__ropePluginRegistry)
   __ropePluginRegistry = globalThis.__ropePluginRegistry;
@@ -30,10 +31,7 @@ if (globalThis.__ropePluginRegistry)
 export function registerRopePlugin<C = any>(plugin: RopePlugin<C>) {
   if (__ropePluginRegistry.has(plugin.id))
     console.log(`[Rope] warning: overriding existing plugin registration for ${plugin.id}`);
-  __ropePluginRegistry.set(plugin.id, {
-    plugin,
-    destroy: null,
-  });
+  __ropePluginRegistry.set(plugin.id, plugin);
 }
 
 /**
@@ -63,7 +61,7 @@ function getPersistedRopePluginInfoKey(id: string): string {
 }
 
 /* creates the info if it does not exist */
-function getPersistedRopePluginInfo(id: string): PersistedRopePluginInfo {
+export function getPersistedRopePluginInfo(id: string): PersistedRopePluginInfo {
   const k = getPersistedRopePluginInfoKey(id);
   if (!(k in localStorage)) {
     const o = {
@@ -79,140 +77,97 @@ function getPersistedRopePluginInfo(id: string): PersistedRopePluginInfo {
   }
 }
 
-/* React hook for localStorage JSON */
-function useLocalStorage<T>(key: string): [T, (x: T) => void] {
-  const [value, setValue] = globalThis.React.useState(() => JSON.parse(localStorage.getItem(key)));
-
-  function listener(e: StorageEvent) {
-    if (e.key === key)
-      setValue(JSON.parse(localStorage.getItem(key)));
-  }
-
-  globalThis.React.useEffect(() => {
-    window.addEventListener("storage", listener);
-    return () => window.removeEventListener("storage", listener);
-  }, []);
-
-  return [value, (x) => {
-    const oldValue = JSON.stringify(value);
-    //if (typeof x === "function")
-    //  x = x(value);
-    const newValue = JSON.stringify(x);
-    /* set the value on localStorage then emit a storage event */
-    localStorage.setItem(key, newValue);
-    window.dispatchEvent(new StorageEvent("storage", {
-      key,
-      oldValue,
-      newValue,
-    }));
-  }];
-}
+///* React hook for localStorage JSON */
+//function useLocalStorage<T>(key: string): [T, (x: T) => void] {
+//  const [value, setValue] = globalThis.React.useState(() => JSON.parse(localStorage.getItem(key)));
+//
+//  function listener(e: StorageEvent) {
+//    if (e.key === key)
+//      setValue(JSON.parse(localStorage.getItem(key)));
+//  }
+//
+//  globalThis.React.useEffect(() => {
+//    window.addEventListener("storage", listener);
+//    return () => window.removeEventListener("storage", listener);
+//  }, []);
+//
+//  return [value, (x) => {
+//    const oldValue = JSON.stringify(value);
+//    //if (typeof x === "function")
+//    //  x = x(value);
+//    const newValue = JSON.stringify(x);
+//    /* set the value on localStorage then emit a storage event */
+//    localStorage.setItem(key, newValue);
+//    window.dispatchEvent(new StorageEvent("storage", {
+//      key,
+//      oldValue,
+//      newValue,
+//    }));
+//  }];
+//}
 
 const selfExports: typeof import("./plugins") = {
   __ropePluginRegistry,
+  wirePlugin,
+  getPersistedRopePluginInfo,
   registerRopePlugin,
-  startRopePlugin,
-  stopRopePlugin,
+  createRopePluginAPI,
   getRopePluginEnabled,
   setRopePluginEnabled,
-  startConfiguredRopePlugins,
   setRopePluginConfig,
+  getCachedExportIds,
+  refreshCachedExportIds,
 };
 
-function createRopePluginAPI(id: string): RopeAPI {
+export function createRopePluginAPI(id: string): RopeAPI {
   const log = (...args: any[]) => console.log(`[Rope-plugins] [${id}]`, ...args);
   return {
     webpack,
     react,
-    redux,
-    slack,
     plugins: selfExports,
     log,
-    usePluginConfig: (getter = (c) => c, setter = (_c, x) => x) => {
-      const k = getPersistedRopePluginInfoKey(id);
-      const [info, setInfo] = useLocalStorage<PersistedRopePluginInfo>(k);
-      const value = globalThis.React.useMemo(() => getter(info.config), [info]);
-
-      return [value, (x) => setInfo({
-        ...info,
-        config: setter(info.config, x),
-      })];
-    },
   };
-}
-
-export function startRopePlugin(id: string) {
-  const p = __ropePluginRegistry.get(id);
-  if (!p)
-    return;
-  /* destroy old plugin */
-  if (p.destroy) {
-    console.log(`[Rope] stopping old plugin for ${id}`);
-    p.destroy();
-  }
-
-  const info = getPersistedRopePluginInfo(id);
-  if (info.config === null && p.plugin.defaultConfig)
-    info.config = p.plugin.defaultConfig;
-  /* create api */
-  const api = createRopePluginAPI(id);
-  p.destroy = p.plugin.init(api, info.config);
-  console.log(`[Rope] started plugin ${id}`);
-}
-
-export function stopRopePlugin(id: string) {
-  const p = __ropePluginRegistry.get(id);
-  if (!p)
-    return;
-  p.destroy();
-  p.destroy = null;
-  console.log(`[Rope] stopped plugin ${id}`);
 }
 
 export function getRopePluginEnabled(id: string): boolean {
   return getPersistedRopePluginInfo(id).enabled;
 }
 
-export function setRopePluginEnabled(id: string, enabled: boolean, syncRunning: boolean = true) {
+export function setRopePluginEnabled(id: string, enabled: boolean) {
   const p = __ropePluginRegistry.get(id);
   if (!p)
     return;
   const info = getPersistedRopePluginInfo(id);
   info.enabled = enabled;
   console.log(`[Rope] set plugin ${id} to enabled: ${enabled}`);
-
-  if (syncRunning) {
-    if (enabled && !p.destroy)
-      startRopePlugin(id);
-    else if (!enabled && p.destroy)
-      stopRopePlugin(id);
-  }
 }
 
-/**
- * Starts plugins whose persisted info indicates they are enabled
- */
-export function startConfiguredRopePlugins() {
-  for (const id of __ropePluginRegistry.keys()) {
-    const info = getPersistedRopePluginInfo(id);
-    if (info.enabled) {
-      console.log(`[Rope] starting configured plugin ${id}`);
-      startRopePlugin(id);
-    }
-  }
-}
-
-export function setRopePluginConfig(id: string, config: any, restart: boolean = true) {
+export function setRopePluginConfig(id: string, config: any) {
   const info = getPersistedRopePluginInfo(id);
   info.config = config;
-  if (restart) {
-    const p = __ropePluginRegistry.get(id);
-    if (!p)
-      return;
-    /* restart if running */
-    if (p.destroy)
-      startRopePlugin(id);
-  }
+}
+
+function getCachedExportMatchers(): Record<string, Record<string, webpack.WebpackMatcher>> {
+  return Object.fromEntries([...__ropePluginRegistry.entries()]
+    .filter(([id, _]) => getRopePluginEnabled(id))
+    .map(([id, m]) => [id, m.imports]));
+}
+
+export function getCachedExportIds(): Record<string, Record<string, webpack.WebpackExportId>> | null {
+  const matchers = getCachedExportMatchers();
+  const key = `rope-cached-export-ids-${hashWebpackMatchers(matchers)}`;
+  const i = localStorage.getItem(key);
+  if (i)
+    return JSON.parse(i);
+  else
+    return null;
+}
+
+export function refreshCachedExportIds() {
+  const matchers = getCachedExportMatchers();
+  const key = `rope-cached-export-ids-${hashWebpackMatchers(matchers)}`;
+  const ids = lookupWebpackModulesBulk(chunkName, matchers);
+  localStorage.setItem(key, JSON.stringify(ids));
 }
 
 /* expose on window */
@@ -220,7 +175,6 @@ let o = {
   ...selfExports,
   localStorageProxy,
   getPersistedRopePluginInfoKey,
-  getPersistedRopePluginInfo,
 };
 
 for (const [k, v] of Object.entries(o)) {

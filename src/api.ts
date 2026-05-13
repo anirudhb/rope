@@ -1,6 +1,6 @@
 /** API for plugins, subject to change */
 
-import { WebpackMatcher } from "jspatching/webpack";
+import { WebpackExportId, WebpackMatcher } from "jspatching/webpack";
 import { RopePatchedObject } from "./patch";
 
 export type RopeAPI = {
@@ -11,12 +11,12 @@ export type RopeAPI = {
   log: (...args: any[]) => void;
 };
 
-export type TransformedImports<I> = Record<string, WebpackMatcher> extends I ? {
-  [K in keyof I]: any;
-} : never;
-export type RopePluginInit<C = undefined, I = {}> =
+export type TransformedImports<I extends Record<string, WebpackMatcher>> = {
+  [K in keyof I]: I[K] extends WebpackMatcher<infer T> ? WebpackExportId<T> : never;
+};
+export type RopePluginInit<C = undefined, I extends Record<string, WebpackMatcher> = {}> =
   (api: RopeAPI, imports: TransformedImports<I>, config: C) => RopePatchedObject[];
-export type RopePlugin<C = undefined, I = {}> = Record<string, WebpackMatcher> extends I ? {
+export type RopePlugin<C = undefined, I extends Record<string, WebpackMatcher> = {}> = {
   /* should be unique! */
   id: string;
   /* markdown supported in all fields */
@@ -29,4 +29,4 @@ export type RopePlugin<C = undefined, I = {}> = Record<string, WebpackMatcher> e
   imports: I;
 } & (C extends NonNullable<infer C2> ? {
   defaultConfig: C2;
-} : {}) : never;
+} : {});

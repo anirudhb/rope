@@ -1,18 +1,7 @@
-import * as webpack from "jspatching/webpack";
 import * as react from "jspatching/react";
-import * as redux from "jspatching/redux";
+import { WebpackMatcher } from "jspatching/webpack";
 import type Quill from "quill";
 import type { Delta as QuillDelta } from "quill";
-
-webpack._3type_hookWebpackChunkEarly("webpackChunkwebapp");
-//redux.registerPrettyReduxMatcher("slack1", (r, s, e) => typeof s === "undefined");
-//redux.registerPrettyReduxMatcher("slack2", (r, s, e) => typeof e === "undefined");
-redux.registerPrettyReduxMatcher("slack", (r, s, e) => !!r && !!s && !!e);
-//redux.insertReduxReducerPatch("slack", "logger", (s, a, r) => {
-//  console.log("[Rope] slack reducer called with action", a);
-//  return r(s, a);
-//});
-react.init();
 
 /*
  * important fields for Redux action creators (functions):
@@ -31,7 +20,7 @@ react.init();
  */
 
 type AnyFunction = (..._args: any[]) => any;
-export const PlainText = react.virtualComponent<{
+export const PlainText = react.componentMatcher<{
   id?: string;
   text: string;
   // parent
@@ -56,7 +45,7 @@ export const PlainText = react.virtualComponent<{
   noCode?: boolean;
   noQuotes?: boolean;
 }>("PlainText");
-export const MrkdwnElement = react.virtualComponent<{
+export const MrkdwnElement = react.componentMatcher<{
   text: string;
   // parent
   maxNewlines?: number;
@@ -89,31 +78,88 @@ export type TabsItemData = {
   buttonWrapper?: () => void;
   className?: string;
 };
-export const Tabs = react.virtualComponent<{
+export const Tabs = react.componentMatcher<{
   tabs: TabsItemData[],
   className?: string;
   onTabChange?: (id: string, e: React.UIEvent) => void;
   currentTabId?: string;
 }>("Tabs");
-export const TypingNames = react.virtualComponent<{
+/*
+ * window._3type_requireWebpackExport(window.__3type_webpackRequires.get("webpackChunkwebapp"), {moduleId:{moduleId:"8339893054"},export:null}).A.render({}).props.children({windowRef:null})
+Object { "$$typeof": Symbol("react.element"), type: class Tabs, key: null, ref: null, props: {…}, _owner: null }
+​
+"$$typeof": Symbol("react.element")
+​
+_owner: null
+​
+key: null
+​
+props: Object { orientation: "horizontal", iconPosition: "right", manualTabActivation: false, … }
+​
+ref: null
+​
+type: class Tabs { constructor(e) }
+​
+​
+defaultProps: Object { orientation: "horizontal", iconPosition: "right", manualTabActivation: false, … }
+​
+​
+displayName: "Tabs"
+​
+​
+length: 1
+​
+​
+name: "M"
+​
+​
+prototype: Object { … }
+​
+​
+<prototype>: function PureComponent(_, A, N)
+​
+<prototype>: Object { … }
+ */
+export const TabsWithWindowRef: WebpackMatcher<React.FC<{
+  tabs: TabsItemData[],
+  className?: string;
+  onTabChange?: (id: string, e: React.UIEvent) => void;
+  currentTabId?: string;
+}>> = (m: any) => {
+ //.A.render({}).props.children({windowRef:null})
+ //
+  try {
+    if (m.render) {
+      const v1 = m.render({});
+      if (v1?.props?.children) {
+        const v2 = v1.props.children({windowRef: null});
+        if (v2?.type?.displayName === "Tabs") {
+          return true;
+        }
+      }
+    }
+  } catch {}
+  return false;
+};
+export const TypingNames = react.componentMatcher<{
   firstTyper: string;
   secondTyper?: string;
   severalPeopleAreTyping?: boolean;
 }>("TypingNames");
-export const Heading = react.virtualComponent<React.PropsWithChildren<{
+export const Heading = react.componentMatcher<React.PropsWithChildren<{
   level?: number;
   size?: number;
   // defaults to black
   weight?: string;
 }>>("Heading");
-export const FieldSet = react.virtualComponent<React.PropsWithChildren<{
+export const FieldSet = react.componentMatcher<React.PropsWithChildren<{
   id?: string;
   className?: string;
 }>>("FieldSet");
-export const Legend = react.virtualComponent<React.PropsWithChildren<{
+export const Legend = react.componentMatcher<React.PropsWithChildren<{
   className?: string;
 }>>("Legend");
-export const SvgIcon = react.virtualComponent<{
+export const SvgIcon = react.componentMatcher<{
   inline?: boolean;
   name:
   | "add-bot"
@@ -787,14 +833,14 @@ export const SvgIcon = react.virtualComponent<{
   | "zoom-in"
   | "zoom-out";
 }>("SvgIcon");
-export const Label = react.virtualComponent<React.PropsWithChildren<{
+export const Label = react.componentMatcher<React.PropsWithChildren<{
   cursor?: "pointer";
   htmlFor?: string;
   className?: string;
   // default true
   optional?: boolean;
-  subtext?: string;
-  text?: string;
+  subtext?: React.ReactNode;
+  text?: React.ReactNode;
   // default block
   type?: "block" | "inline";
   // default false
@@ -802,13 +848,13 @@ export const Label = react.virtualComponent<React.PropsWithChildren<{
   // default true
   dataQaLabel?: true;
 }>>("Label");
-export const Tooltip = react.virtualComponent<React.PropsWithChildren<{
+export const Tooltip = react.componentMatcher<React.PropsWithChildren<{
   delay: number;
   // default false(?)
   hideFromScreenReader?: boolean;
   tip: () => React.ReactNode;
 }>>("Tooltip");
-export const BaseMrkdwnChannel = react.virtualComponent<{
+export const BaseMrkdwnChannel = react.componentMatcher<{
   alwaysDisplayAsLink?: boolean;
   channelHasNonUniqueName?: boolean;
   channelName?: string;
@@ -827,13 +873,13 @@ export const BaseMrkdwnChannel = react.virtualComponent<{
   team?: string;
   teamName?: string;
 }>("BaseMrkdwnChannel");
-export const MemberProfileRestriction = react.virtualComponent<{
+export const MemberProfileRestriction = react.componentMatcher<{
   className?: string;
   /* TODO: add types */
   member: any;
   team: any;
 }>("MemberProfileRestriction");
-export const MessageInput = react.virtualComponent<{
+export const MessageInput = react.componentMatcher<{
   // TODO: fill out function signatures
   addFileIdToDraft: AnyFunction;
   ariaDescribedBy?: string;
@@ -997,7 +1043,7 @@ export const MessageInput = react.virtualComponent<{
   windowRef?: WeakRef<any>;
   windowToken?: any;
 }>("MessageInput");
-export const ComposerAttachments = react.virtualComponent<{
+export const ComposerAttachments = react.componentMatcher<{
   channelId?: string;
   draftFiles: any[];
   draftId?: string;
@@ -1022,7 +1068,7 @@ onFilePermissionSelect: () => {
   onFilePermissionSelect: AnyFunction;
   onUnfurlRemoved: AnyFunction;
 }>("WrappedConnect(ComposerAttachments)");
-export const BlockKitRenderer = react.virtualComponent<{
+export const BlockKitRenderer = react.componentMatcher<{
   appId?: string;
   // something
   blockKitLogPayload?: any;

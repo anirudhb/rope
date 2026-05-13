@@ -1,109 +1,47 @@
 import * as webpack from "jspatching/webpack";
-import * as react from "jspatching/react";
 
+import * as plugins from "./plugins";
 import * as patch from "./patch";
 
-/* Patch a simple module */
 const chunkName = "webpackChunkwebapp";
 
-function createCachedMetadata() {
-  // Find the React import
-  const reactId = webpack.tryFindWebpackExportId(chunkName, m => m?.createElement);
-  if (!reactId) return null;
+import menuPlugin from "./plugins/menu";
 
-  // Find the Legend react element
-  const legendId = webpack.tryFindWebpackExportId(chunkName, m => react.getComponentName(m) === "Legend");
-  if (!legendId) return null;
+///////
+/* Gather plugin metadata */
+const ropePlugins: plugins.RopePlugin[] = [
+  menuPlugin,
+];
 
-  return { reactId, legendId };
-}
+for (const p of ropePlugins)
+  plugins.registerRopePlugin(p);
 
-// Fetch cached metadata
-function getCachedMetadata() {
-  let d = localStorage.getItem("rope_cached_metadata");
-  if (d !== null)
-    return JSON.parse(d);
-  else
-    return null;
-}
+// ensure menu is enabled
+plugins.setRopePluginEnabled(menuPlugin.id, true);
 
-function createLegendPatch({ legendId, reactId }: {
-  legendId: webpack.WebpackExportId;
-  reactId: webpack.WebpackExportId;
-}): webpack._3type_WebpackPatch[] {
-  return patch.createAndConsolidatePatches([
-    {
-      debugName: "rope-legend",
-      exportId: legendId,
-      patch: (require, orig) => {
-        // Fetch original React
-        const React = webpack.requireWebpackExport(require, reactId);
+const cachedExports = plugins.getCachedExportIds();
+if (cachedExports) {
+  console.log(`[Rope] Found cached metadata`);
+  // Build patched object list
+  const patchedObjects = [];
 
-        return react.patchedComponent(orig, (props: any) => {
-          if (props.children === "Input options")
-            props = { ...props, children: "Input options (patched with Rope!)" };
-          return React.createElement(orig, props);
-        });
-      },
-    },
-  ]);
-  /*
-    {
-      debugName: "rope-log-react",
-      moduleId: reactId.moduleId.moduleId,
-      patch: (orig) => {
-        return function(module, exports, require) {
-          orig(module, exports, require);
-          console.log(module);
-          console.log(exports);
-        };
-      },
-    },
-  ];
-  */
-}
-
-function init() {
-  const d = getCachedMetadata();
-  if (d === null) {
-    globalThis.ropeCallback = function() {
-      // cache
-      let d2 = createCachedMetadata();
-      if (d2 === null) {
-        console.log(`[Rope] Failed to create cached metadata`);
-        return;
-      }
-
-      localStorage.setItem("rope_cached_metadata", JSON.stringify(d2));
-      console.log(`[Rope] Cached metadata created, will be used on next reload`);
-    };
-    console.log(`[Rope] No cached metadata, added callback on window`);
-
-    return;
+  for (const [m, ids] of Object.entries(cachedExports)) {
+    const p = plugins.__ropePluginRegistry.get(m);
+    console.log(`[Rope] Initializing plugin ${p.id} (${p.meta.name})`);
+    const i = plugins.getPersistedRopePluginInfo(p.id);
+    const api = plugins.createRopePluginAPI(p.id);
+    const patches = p.init(api, ids, i.config);
+    patchedObjects.push(...patches);
   }
 
-  console.log(`[Rope] Found cached metadata`);
-  console.log(d);
-  // Create patch
-  const legendPatches = createLegendPatch(d);
-  webpack._3type_hookWebpackChunkEarly(chunkName, [...legendPatches]);
-  console.log(`[Rope] Applied patches early`);
+  // Consolidate and patch
+  const webpackPatches = patch.createAndConsolidatePatches(patchedObjects);
+  console.log(`[Rope] Performing early patch, ${patchedObjects.length} patched objects, ${webpackPatches.length} patched Webpack modules`);
+  webpack._3type_hookWebpackChunkEarly(chunkName, webpackPatches);
+} else {
+  console.log(`[Rope] No cached metadata found`);
+  globalThis.ropeCache = () => {
+    plugins.refreshCachedExportIds();
+    console.log(`[Rope] Cached metadata ready! Reload the page`);
+  };
 }
-
-init();
-
-//import menuPlugin from "./plugins/menu";
-//
-///* Gather plugin metadata */
-//const ropePlugins: plugins.RopePlugin[] = [
-//  menuPlugin,
-//];
-//
-//for (const p of ropePlugins)
-//  plugins.registerRopePlugin(p);
-//
-//// ensure menu is enabled
-//plugins.setRopePluginEnabled(menuPlugin.id, true, false);
-//
-///* start plugins */
-//plugins.startConfiguredRopePlugins();

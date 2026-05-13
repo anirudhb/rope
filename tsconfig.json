@@ -8,9 +8,7 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowUmdGlobalAccess": true,
-    "jsx": "react",
-    "jsxFactory": "globalThis.React.createElement",
-    "jsxFragmentFactory": "globalThis.React.Fragment"
+    "jsx": "react"
   },
   "references": [
     { "path": "./jspatching" }
