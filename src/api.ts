@@ -3,19 +3,24 @@
 import { WebpackExportId, WebpackMatcher } from "jspatching/webpack";
 import { RopePatchedObject } from "./patch";
 
-export type RopeAPI = {
+export type RopeAPI<C> = {
   webpack: typeof import("jspatching/webpack");
   react: typeof import("jspatching/react");
   plugins: typeof import("./plugins");
   /* for convenience */
   log: (...args: any[]) => void;
+
+  // React hook that allows interfacing with plugin config.
+  // Caution! The setter must actually reflect changes, otherwise the getter will not see them.
+  // Calling this without a getter/setter allows modifying the entire plugin config at once.
+  usePluginConfig: <T = C>(react: typeof import("react"), getter?: (c: C) => T, setter?: (c: C, t: T) => C) => [T, (t: T) => void];
 };
 
 export type TransformedImports<I extends Record<string, WebpackMatcher>> = {
   [K in keyof I]: I[K] extends WebpackMatcher<infer T> ? WebpackExportId<T> : never;
 };
 export type RopePluginInit<C = undefined, I extends Record<string, WebpackMatcher> = {}> =
-  (api: RopeAPI, imports: TransformedImports<I>, config: C) => RopePatchedObject[];
+  (api: RopeAPI<C>, imports: TransformedImports<I>, config: C) => RopePatchedObject[];
 export type RopePlugin<C = undefined, I extends Record<string, WebpackMatcher> = {}> = {
   /* should be unique! */
   id: string;

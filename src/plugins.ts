@@ -77,34 +77,34 @@ export function getPersistedRopePluginInfo(id: string): PersistedRopePluginInfo 
   }
 }
 
-///* React hook for localStorage JSON */
-//function useLocalStorage<T>(key: string): [T, (x: T) => void] {
-//  const [value, setValue] = globalThis.React.useState(() => JSON.parse(localStorage.getItem(key)));
-//
-//  function listener(e: StorageEvent) {
-//    if (e.key === key)
-//      setValue(JSON.parse(localStorage.getItem(key)));
-//  }
-//
-//  globalThis.React.useEffect(() => {
-//    window.addEventListener("storage", listener);
-//    return () => window.removeEventListener("storage", listener);
-//  }, []);
-//
-//  return [value, (x) => {
-//    const oldValue = JSON.stringify(value);
-//    //if (typeof x === "function")
-//    //  x = x(value);
-//    const newValue = JSON.stringify(x);
-//    /* set the value on localStorage then emit a storage event */
-//    localStorage.setItem(key, newValue);
-//    window.dispatchEvent(new StorageEvent("storage", {
-//      key,
-//      oldValue,
-//      newValue,
-//    }));
-//  }];
-//}
+/* React hook for localStorage JSON */
+function useLocalStorage<T>(React: typeof import("react"), key: string): [T, (x: T) => void] {
+  const [value, setValue] = React.useState(() => JSON.parse(localStorage.getItem(key)));
+
+  function listener(e: StorageEvent) {
+    if (e.key === key)
+      setValue(JSON.parse(localStorage.getItem(key)));
+  }
+
+  React.useEffect(() => {
+    window.addEventListener("storage", listener);
+    return () => window.removeEventListener("storage", listener);
+  }, []);
+
+  return [value, (x) => {
+    const oldValue = JSON.stringify(value);
+    //if (typeof x === "function")
+    //  x = x(value);
+    const newValue = JSON.stringify(x);
+    /* set the value on localStorage then emit a storage event */
+    localStorage.setItem(key, newValue);
+    window.dispatchEvent(new StorageEvent("storage", {
+      key,
+      oldValue,
+      newValue,
+    }));
+  }];
+}
 
 const selfExports: typeof import("./plugins") = {
   __ropePluginRegistry,
@@ -119,13 +119,23 @@ const selfExports: typeof import("./plugins") = {
   refreshCachedExportIds,
 };
 
-export function createRopePluginAPI(id: string): RopeAPI {
+export function createRopePluginAPI<C = undefined>(id: string): RopeAPI<C> {
   const log = (...args: any[]) => console.log(`[Rope-plugins] [${id}]`, ...args);
   return {
     webpack,
     react,
     plugins: selfExports,
     log,
+    usePluginConfig: (React, getter = (c) => c as any, setter = (_c, x) => x as any) => {
+      const k = getPersistedRopePluginInfoKey(id);
+      const [info, setInfo] = useLocalStorage<PersistedRopePluginInfo>(React, k);
+      const value = React.useMemo(() => getter(info.config), [info]);
+
+      return [value, (x) => setInfo({
+        ...info,
+        config: setter(info.config, x),
+      })];
+    },
   };
 }
 

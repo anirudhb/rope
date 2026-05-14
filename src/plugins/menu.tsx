@@ -28,18 +28,21 @@ export default plugins.wirePlugin({
     authors: "<@U01D9DWGEB0>",
   },
   init(api, { ReactI, TabsWithWindowRefI, FieldSetI, LegendI, LabelI, MrkdwnElementI }) {
-    return [/*{
-      debugName: "rope-menu-createelement-patch",
-      exportId: { ...ReactI, export: "createElement" },
-      patch: (require, createElementOrig) => {
-        return function(...args) {
-          if (args[0] && api.react.getComponentName(args[0]) === "Tabs" && args[1] && args[1]?.className === "p-prefs_dialog__tabs") {
-            debugger;
-          }
-          return createElementOrig(...args);
-        };
+    return [
+      {
+        debugName: "rope-menu-createelement-patch",
+        exportId: { ...ReactI, export: "createElement" },
+        patch: (_require, createElementOrig) => {
+          return function(...args: any[]) {
+            //if (args[0] && api.react.getComponentName(args[0]) === "Tabs" && args[1] && args[1]?.className === "p-prefs_dialog__tabs") {
+            if (args[0] && api.react.getComponentName(args[0]) === "BaseMrkdwnChannel" && args[1] && args[1]?.isNonExistent) {
+              debugger;
+            }
+            return createElementOrig(...args);
+          };
+        },
       },
-      }, */{
+      {
       debugName: "rope-menu-tabs-patch",
       exportId: TabsWithWindowRefI,
       dependencies: [ReactI, MrkdwnElementI, FieldSetI, LegendI, LabelI],

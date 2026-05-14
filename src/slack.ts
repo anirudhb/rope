@@ -78,6 +78,7 @@ export type TabsItemData = {
   buttonWrapper?: () => void;
   className?: string;
 };
+/* Definitely broken */
 export const Tabs = react.componentMatcher<{
   tabs: TabsItemData[],
   className?: string;
@@ -872,7 +873,7 @@ export const BaseMrkdwnChannel = react.componentMatcher<{
   noLinking?: boolean;
   team?: string;
   teamName?: string;
-}>("BaseMrkdwnChannel");
+}>/*("BaseMrkdwnChannel")*/("withViewContainerContext(Connect(BaseMrkdwnChannel))");
 export const MemberProfileRestriction = react.componentMatcher<{
   className?: string;
   /* TODO: add types */
@@ -1096,22 +1097,3 @@ export const BlockKitRenderer = react.componentMatcher<{
   serviceId?: string;
   showConfirmDialog?: AnyFunction;
 }>("WrappedConnect(withFocusTransition(auto-metrics(BlockKitRenderer)))");
-
-const cs = {
-  PlainText,
-  MrkdwnElement,
-  Tabs,
-  TypingNames,
-  Heading,
-  FieldSet,
-  Legend,
-  SvgIcon,
-  Label,
-  Tooltip,
-  BaseMrkdwnChannel,
-};
-
-globalThis.$components = {};
-for (const [k, v] of Object.entries(cs)) {
-  globalThis.$components[k] = v;
-}

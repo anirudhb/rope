@@ -13,5 +13,8 @@
   "references": [
     { "path": "./jspatching" }
   ],
-  "include": ["src/**/*"]
+  "include": [
+    "src/userscript.ts",
+    "src/main.ts"
+  ]
 }
