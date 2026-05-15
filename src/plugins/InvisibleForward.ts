@@ -1,5 +1,5 @@
 /** Like Taut's InvisibleForward, but patches at the message level, so it works all the time. */
-import type { RopeAPI, RopePlugin, RopePluginInit } from "../api";
+import { wirePlugin } from "../plugins";
 
 /* From Taut's InvisibleForward */
 function isSlackUrl(url: string): boolean {
@@ -22,41 +22,36 @@ function isSlackUrl(url: string): boolean {
   return false
 }
 
-const init: RopePluginInit = (api: RopeAPI) => {
-  const deinitCallbacks = [];
-
-  const { pre, post } = api.webpack.earlyPopulatePrettyWebpackExport("actionCreators::chatPostMessage", m => m?.meta?.name === "chatPostMessage");
-  post(i => {
-    const unpatchChatPostMessage = api.webpack.insertWebpackPatch(i, "InvisibleForward2", (orig) => (arg: any) => {
-      //api.log("chatPostMessage called with original arg", arg);
-      if (arg?.message && arg.message.blocks) {
-        // patch
-        for (const b of arg.message.blocks)
-          if (b?.type === "rich_text")
-            for (const e of b?.elements)
-              if (e?.type === "rich_text_section")
-                for (const e2 of e?.elements)
-                  if (e2?.type === "link" && isSlackUrl(e2?.url))
-                    e2.text = "\u2060";
-        //api.log("patched message", arg);
-      }
-      return orig(arg);
-    });
-
-    deinitCallbacks.push(unpatchChatPostMessage);
-  });
-  return () => {
-    for (const cb of deinitCallbacks)
-      cb();
-  };
-};
-
-export default {
+export default wirePlugin({
+  chatPostMessageI: (m: any) => m?.meta?.name === "chatPostMessage",
+}, {
   id: "InvisibleForward",
   meta: {
     name: "Invisible Forward",
     description: "Makes Slack links at the start of your messages invisible, like a forwarded message, based on <@U07FXPUDYDC><https://greasyfork.org/en/scripts/526439-forward-slack-messages-files-and-later-items-to-channels-and-threads-using-an-invisible-link|'s userscript>. Also based on <@U06UYA5GMB5>'s original Taut plugin. Works whether or not the rich text editor is enabled!",
     authors: "<@U01D9DWGEB0>",
   },
-  init,
-} satisfies RopePlugin;
+  init(_api, { chatPostMessageI }) {
+    return {
+      modules: [{
+        exportId: chatPostMessageI,
+        debugName: "invisibleforward-chatpostmessage-patch",
+        patch: (_require, orig) => {
+          return function(arg: any) {
+            if (arg?.message && arg.message.blocks) {
+              for (const b of arg.message.blocks)
+                if (b?.type === "rich_text")
+                  for (const e of b?.elements)
+                    if (e?.type === "rich_text_section")
+                      for (const e2 of e?.elements)
+                        if (e2?.type === "link" && isSlackUrl(e2?.url))
+                          e2.text = "\u2060";
+            }
+            return orig(arg);
+          };
+        },
+      }],
+      components: [],
+    };
+  },
+});

@@ -6,12 +6,14 @@ import * as patch from "./patch";
 const chunkName = "webpackChunkwebapp";
 
 import menuPlugin from "./plugins/menu";
+import InvisibleForward from "./plugins/InvisibleForward";
 import PrivateChannelMapper from "./plugins/PrivateChannelMapper";
 
 ///////
 /* Gather plugin metadata */
 const ropePlugins: plugins.RopePlugin[] = [
   menuPlugin,
+  InvisibleForward,
   PrivateChannelMapper,
 ];
 
