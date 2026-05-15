@@ -3,7 +3,7 @@
 import { WebpackExportId, WebpackMatcher } from "jspatching/webpack";
 import { RopePatchedObject, RopeReactPatch } from "./patch";
 
-export type RopeAPI<C> = {
+export type RopeAPI<C = undefined> = {
   webpack: typeof import("jspatching/webpack");
   react: typeof import("jspatching/react");
   plugins: typeof import("./plugins");

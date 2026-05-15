@@ -178,6 +178,7 @@ export function getCachedExportIds(): Record<string, Record<string, webpack.Webp
 }
 
 export function refreshCachedExportIds() {
+  webpack._3type_clearWebpackRequire(chunkName);
   const matchers = getCachedExportMatchers();
   const key = `rope-cached-export-ids-${hashWebpackMatchers(matchers)}`;
   const ids = lookupWebpackModulesBulk(chunkName, matchers);

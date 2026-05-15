@@ -6,6 +6,7 @@ import * as patch from "./patch";
 const chunkName = "webpackChunkwebapp";
 
 import menuPlugin from "./plugins/menu";
+import IdvStatus from "./plugins/IdvStatus";
 import InvisibleForward from "./plugins/InvisibleForward";
 import PrivateChannelMapper from "./plugins/PrivateChannelMapper";
 
@@ -13,6 +14,7 @@ import PrivateChannelMapper from "./plugins/PrivateChannelMapper";
 /* Gather plugin metadata */
 const ropePlugins: plugins.RopePlugin[] = [
   menuPlugin,
+  IdvStatus,
   InvisibleForward,
   PrivateChannelMapper,
 ];
