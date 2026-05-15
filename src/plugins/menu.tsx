@@ -57,6 +57,7 @@ export default plugins.wirePlugin({
                     checked={plugins.getRopePluginEnabled(i.id)}
                     onChange={e => {
                       plugins.setRopePluginEnabled(i.id, e.target.checked);
+                      plugins.refreshCachedExportIds();
                       reloadPluginsList();
                     }}
                   />

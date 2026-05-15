@@ -52,8 +52,9 @@ if (cachedExports) {
   webpack._3type_hookWebpackChunkEarly(chunkName, webpackPatches);
 } else {
   console.log(`[Rope] No cached metadata found`);
-  globalThis.ropeCache = () => {
-    plugins.refreshCachedExportIds();
-    console.log(`[Rope] Cached metadata ready! Reload the page`);
-  };
 }
+
+globalThis.ropeCache = () => {
+  plugins.refreshCachedExportIds();
+  console.log(`[Rope] Cached metadata ready! Reload the page`);
+};

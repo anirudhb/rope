@@ -181,6 +181,12 @@ export function refreshCachedExportIds() {
   const matchers = getCachedExportMatchers();
   const key = `rope-cached-export-ids-${hashWebpackMatchers(matchers)}`;
   const ids = lookupWebpackModulesBulk(chunkName, matchers);
+  /* Delete existing keys */
+  for (const k of Object.keys(localStorage)) {
+    if (k.startsWith("rope-cached-export-ids-")) {
+      localStorage.removeItem(k);
+    }
+  }
   localStorage.setItem(key, JSON.stringify(ids));
 }
 
