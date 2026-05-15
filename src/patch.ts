@@ -1,6 +1,7 @@
 /** Handles patch transformations */
 
 import { sha256 } from "js-sha256";
+import { getComponentName, patchedComponent } from "jspatching/react";
 
 import { _3type_webpack_require_type, _3type_WebpackPatch, tryFindWebpackExportId, WebpackExportId, WebpackMatcher } from "jspatching/webpack";
 
@@ -59,7 +60,7 @@ export function hashWebpackMatchers(matchers: Record<string, Record<string, Webp
 export type RopePatchedObject = {
   exportId: WebpackExportId;
   debugName: string;
-  patch: (require: _3type_webpack_require_type, orig: any) => any;
+  patch: (require: _3type_webpack_require_type, orig: any, module: any, exports: any) => any;
   dependencies?: WebpackExportId[];
 };
 /**
@@ -107,7 +108,7 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
           console.log(`[Rope] Running root patch ${rp.debugName} for module id ${moduleId}`);
           const dependentChunkIds = (rp.dependencies ?? []).map(x=>x.moduleId.chunkIds).flat();
           await Promise.all(dependentChunkIds.map(x=>(require as any).e(x)));
-          module.exports = rp.patch(require, module.exports);
+          module.exports = rp.patch(require, module.exports, module, exports);
         }
       }
 
@@ -131,9 +132,68 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
           console.log(`[Rope] Running property patch ${pp.debugName} for property ${prop} of module ${moduleId}`);
           const dependentChunkIds = (pp.dependencies ?? []).map(x=>x.moduleId.chunkIds).flat();
           await Promise.all(dependentChunkIds.map(x=>(require as any).e(x)));
-          setProp(pp.patch(require, getProp()));
+          setProp(pp.patch(require, getProp(), module, exports));
         }
       }
     },
   }));
+}
+
+export type RopeReactPatch<P = {}> = {
+  componentName: string;
+  debugName: string;
+  patch: (require: _3type_webpack_require_type, react: typeof import("react"), orig: React.FC<P>) => React.FC<P>;
+  dependencies?: WebpackExportId[];
+};
+/**
+ * Consolidates React patches into a single RopePatchedObject for React.createElement.
+ */
+export function consolidateReactPatches(reactId: WebpackExportId, patches: RopeReactPatch[]): RopePatchedObject {
+  //const sym_RopePatched = Symbol.for("Rope.ReactPatched");
+  //const sym_RopeOriginal = Symbol.for("Rope.ReactOriginal");
+  const patchesByComponent = new Map();
+  for (const p of patches) {
+    if (!patchesByComponent.has(p.componentName))
+      patchesByComponent.set(p.componentName, []);
+    patchesByComponent.get(p.componentName).push(p);
+  }
+
+  return {
+    exportId: { ...reactId, export: "createElement" },
+    debugName: "rope-consolidated-react-createElement-patches",
+    dependencies: patches.map(p=>p.dependencies ?? []).flat(),
+    patch: (require, real__createElement: typeof import("react").createElement, module, _exports): typeof import("react").createElement => {
+      const patchedComponents = new WeakMap();
+      const patchedComponents2 = new Map();
+      const notPatched = new WeakSet();
+
+      return function(type: any, props: any, ...children: any[]) {
+        const orig = type;
+        if (!(typeof type === "object" || typeof type === "function") || notPatched.has(type)) {
+          /* do nothing */
+        } else if (patchedComponents.has(type)) {
+          type = patchedComponents.get(type);
+        } else {
+          const name = getComponentName(type);
+          if (patchedComponents2.has(name)) {
+            type = patchedComponents2.get(name);
+            patchedComponents.set(orig, type);
+          } else if (patchesByComponent.has(name)) {
+            const orig2 = (props: any) => real__createElement(orig, props);
+            orig2.displayName = `OriginalThunk(${name})`;
+            type = orig2;
+            for (const p of patchesByComponent.get(name)) {
+              console.log(`[Rope] Running React component patch ${p.debugName} for component ${p.componentName}`);
+              type = p.patch(require, module.exports, type);
+            }
+            patchedComponents2.set(name, type);
+            patchedComponents.set(orig, type);
+          } else {
+            notPatched.add(type);
+          }
+        }
+        return real__createElement(type, props, ...children) as any;
+      };
+    },
+  };
 }

@@ -873,7 +873,8 @@ export const BaseMrkdwnChannel = react.componentMatcher<{
   noLinking?: boolean;
   team?: string;
   teamName?: string;
-}>/*("BaseMrkdwnChannel")*/("withViewContainerContext(Connect(BaseMrkdwnChannel))");
+}>("BaseMrkdwnChannel");
+//("withViewContainerContext(Connect(BaseMrkdwnChannel))");
 export const MemberProfileRestriction = react.componentMatcher<{
   className?: string;
   /* TODO: add types */

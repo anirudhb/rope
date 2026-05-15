@@ -1,7 +1,7 @@
 /** API for plugins, subject to change */
 
 import { WebpackExportId, WebpackMatcher } from "jspatching/webpack";
-import { RopePatchedObject } from "./patch";
+import { RopePatchedObject, RopeReactPatch } from "./patch";
 
 export type RopeAPI<C> = {
   webpack: typeof import("jspatching/webpack");
@@ -16,11 +16,16 @@ export type RopeAPI<C> = {
   usePluginConfig: <T = C>(react: typeof import("react"), getter?: (c: C) => T, setter?: (c: C, t: T) => C) => [T, (t: T) => void];
 };
 
+export type RopePatches = {
+  modules: RopePatchedObject[];
+  components: RopeReactPatch[];
+};
+
 export type TransformedImports<I extends Record<string, WebpackMatcher>> = {
   [K in keyof I]: I[K] extends WebpackMatcher<infer T> ? WebpackExportId<T> : never;
 };
 export type RopePluginInit<C = undefined, I extends Record<string, WebpackMatcher> = {}> =
-  (api: RopeAPI<C>, imports: TransformedImports<I>, config: C) => RopePatchedObject[];
+  (api: RopeAPI<C>, imports: TransformedImports<I>, config: C) => RopePatches;
 export type RopePlugin<C = undefined, I extends Record<string, WebpackMatcher> = {}> = {
   /* should be unique! */
   id: string;

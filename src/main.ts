@@ -26,15 +26,25 @@ if (cachedExports) {
   console.log(`[Rope] Found cached metadata`);
   // Build patched object list
   const patchedObjects = [];
+  const reactPatches = [];
 
   for (const [m, ids] of Object.entries(cachedExports)) {
+    // FIXME
+    if (m === "rope") continue;
+
     const p = plugins.__ropePluginRegistry.get(m);
     console.log(`[Rope] Initializing plugin ${p.id} (${p.meta.name})`);
     const i = plugins.getPersistedRopePluginInfo(p.id);
+    if (i.config === null && p.defaultConfig)
+      i.config = p.defaultConfig;
     const api = plugins.createRopePluginAPI(p.id);
     const patches = p.init(api, ids, i.config);
-    patchedObjects.push(...patches);
+    patchedObjects.push(...patches.modules);
+    reactPatches.push(...patches.components);
   }
+
+  // Build React patch
+  patchedObjects.unshift(patch.consolidateReactPatches(cachedExports.rope.React, reactPatches));
 
   // Consolidate and patch
   const webpackPatches = patch.createAndConsolidatePatches(patchedObjects);

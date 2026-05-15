@@ -158,9 +158,13 @@ export function setRopePluginConfig(id: string, config: any) {
 }
 
 function getCachedExportMatchers(): Record<string, Record<string, webpack.WebpackMatcher>> {
-  return Object.fromEntries([...__ropePluginRegistry.entries()]
+  const x1 = Object.fromEntries([...__ropePluginRegistry.entries()]
     .filter(([id, _]) => getRopePluginEnabled(id))
     .map(([id, m]) => [id, m.imports]));
+  return {
+    ...x1,
+    rope: { React: react.ReactMatcher },
+  };
 }
 
 export function getCachedExportIds(): Record<string, Record<string, webpack.WebpackExportId>> | null {
