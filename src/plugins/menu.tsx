@@ -22,7 +22,15 @@ export default plugins.wirePlugin({
     description: "Provides a menu to configure and view Rope",
     authors: "<@U01D9DWGEB0>",
   },
-  init(api, { FieldSetI, LegendI, LabelI, MrkdwnElementI }) {
+  newModules: {
+    menuConfigUi: (module, _exports, _require) => {
+      module.exports = {};
+      //module.exports = function(React: typeof import("react")) {
+      //  return <></>;
+      //};
+    },
+  },
+  init(api, { FieldSetI, LegendI, LabelI, MrkdwnElementI, extraModules: { menuConfigUi: menuConfigUiI } }) {
     return {
       modules: [],
       components: [{
@@ -34,8 +42,19 @@ export default plugins.wirePlugin({
           const FieldSet = api.webpack.requireWebpackExport(require, FieldSetI);
           const Legend = api.webpack.requireWebpackExport(require, LegendI);
           const Label = api.webpack.requireWebpackExport(require, LabelI);
+          let menuConfigUi: any;
+          // hack
+          api.webpack.requireWebpackExport(require, menuConfigUiI);
+
+          function bindMenuConfigUi() {
+            if (menuConfigUi)
+              return;
+            menuConfigUi = api.webpack.requireWebpackExport(require, menuConfigUiI);
+          }
 
           function PluginsList() {
+            // hack
+            bindMenuConfigUi();
             const [plugins_, setPlugins_] = React.useState<plugins.RopePlugin[]>([...plugins.__ropePluginRegistry.values()]);
 
             function reloadPluginsList() {
@@ -62,6 +81,10 @@ export default plugins.wirePlugin({
                     }}
                   />
                 </Label>
+                {menuConfigUi[i.id] && (() => {
+                  const ConfigUi = menuConfigUi[i.id](React);
+                  return <ConfigUi />;
+                })()}
               </div>)}
               <hr/>
               <MrkdwnElement text={`Plugin configurations are stored in \`localStorage\`.\nSome plugins may require a reload to properly take effect.\nThings are unstable and may break, your computer might even catch on fire. Please report any bugs!`} />

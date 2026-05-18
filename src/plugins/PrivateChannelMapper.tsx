@@ -22,9 +22,22 @@ export default wirePlugin({
   } satisfies {
     privateChannelNames: Record<string, string>;
   },
-  init(api, { SvgIconI, TooltipI }, _config) {
+  init(api, { SvgIconI, TooltipI, extraModules: { menuConfigUi }, }, _config) {
     return {
-      modules: [],
+      modules: [{
+        exportId: menuConfigUi,
+        debugName: "privatechannelmapper-menuconfigui",
+        patch: (_require, orig, _module, _exports) => {
+          return {
+            ...orig,
+            PrivateChannelMapper: (React: typeof import("react")) => {
+              return function PrivateChannelMapperConfigUi() {
+                return <div>This is config for PrivateChannelMapper!</div>;
+              };
+            },
+          };
+        },
+      }],
       components: [{
         componentName: "BaseMrkdwnChannel",
         debugName: "privatechannelmapper-basemrkdwnchannel-patch",
