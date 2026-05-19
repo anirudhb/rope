@@ -11,10 +11,10 @@ const chunkName = "webpackChunkwebapp";
 
 export function wirePlugin<
   const I extends {},
-  const P extends Omit<RopePlugin<C, I>, "imports">,
-  C = undefined
->(i: I, p: P): RopePlugin<C, I> {
-  return ({ ...p, imports: i }) as any;
+  const P extends Omit<RopePlugin<C, I>, "imports" | "defaultConfig">,
+  const C,
+>(i: I, d: C, p: P): RopePlugin<C, I> {
+  return ({ ...p, imports: i, defaultConfig: d }) as any;
 }
 
 type PersistedRopePluginInfo = {
@@ -126,6 +126,18 @@ export function createRopePluginAPI<C = undefined>(id: string): RopeAPI<C> {
     react,
     plugins: selfExports,
     log,
+    id,
+    getPluginConfig: () => {
+      const k = getPersistedRopePluginInfo(id);
+      return k.config;
+    },
+    setPluginConfig: c => {
+      const k = getPersistedRopePluginInfo(id);
+      if (typeof c === "function") {
+        c = (c as any)(k.config) as C;
+      }
+      k.config = c;
+    },
     usePluginConfig: (React, getter = (c) => c as any, setter = (_c, x) => x as any) => {
       const k = getPersistedRopePluginInfoKey(id);
       const [info, setInfo] = useLocalStorage<PersistedRopePluginInfo>(React, k);

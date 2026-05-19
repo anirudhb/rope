@@ -9,6 +9,11 @@ export type RopeAPI<C = undefined> = {
   plugins: typeof import("./plugins");
   /* for convenience */
   log: (...args: any[]) => void;
+  id: string;
+
+  getPluginConfig: () => C;
+  // Fires a localStorage event so that e.g. React hooks also get updated
+  setPluginConfig: (c: C | ((c: C) => C)) => void;
 
   // React hook that allows interfacing with plugin config.
   // Caution! The setter must actually reflect changes, otherwise the getter will not see them.

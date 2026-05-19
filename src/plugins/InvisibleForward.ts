@@ -24,7 +24,7 @@ function isSlackUrl(url: string): boolean {
 
 export default wirePlugin({
   chatPostMessageI: (m: any) => m?.meta?.name === "chatPostMessage",
-}, {
+}, undefined, {
   id: "InvisibleForward",
   meta: {
     name: "Invisible Forward",

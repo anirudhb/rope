@@ -17,7 +17,7 @@ export default plugins.wirePlugin({
   LegendI,
   LabelI,
   MrkdwnElementI,
-}, {
+}, undefined, {
   id: "menu",
   meta: {
     name: "Rope menu",
@@ -46,6 +46,7 @@ export default plugins.wirePlugin({
           const Legend = api.webpack.requireWebpackExport(require, LegendI);
           const Label = api.webpack.requireWebpackExport(require, LabelI);
           let menuConfigUi: any;
+          let menuConfigUiCache = {};
           // hack
           api.webpack.requireWebpackExport(require, menuConfigUiI);
 
@@ -53,6 +54,20 @@ export default plugins.wirePlugin({
             if (menuConfigUi)
               return;
             menuConfigUi = api.webpack.requireWebpackExport(require, menuConfigUiI);
+          }
+
+          function getCachedMenuConfigUi(React: typeof import("react"), id: string): React.FC | null {
+            if (menuConfigUi[id]) {
+              if (menuConfigUiCache[id]) {
+                return menuConfigUiCache[id];
+              } else {
+                const x = menuConfigUi[id](React);
+                menuConfigUiCache[id] = x;
+                return x;
+              }
+            } else {
+              return null;
+            }
           }
 
           function PluginsList() {
@@ -88,10 +103,7 @@ export default plugins.wirePlugin({
                     }}
                   />
                 </Label>
-                {menuConfigUi[i.id] && (() => {
-                  const ConfigUi = menuConfigUi[i.id](React);
-                  return <ConfigUi />;
-                })()}
+                {menuConfigUi[i.id] && React.createElement(getCachedMenuConfigUi(React, i.id))}
               </div>)}
               <hr/>
               <MrkdwnElement text={`Plugin configurations are stored in \`localStorage\`.\nThings are unstable and may break, your computer might even catch on fire. Please report any bugs!`} />

@@ -129,7 +129,7 @@ async function fetchIdvStatus(slackId: string): Promise<IdvStatusType> {
 //////
 
 export default wirePlugin({
-}, {
+}, undefined, {
   id: "IdvStatus",
   meta: {
     name: "IDV Status",
