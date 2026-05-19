@@ -29,6 +29,12 @@
 //    unsafeWindow[k] = globalThis[k];
 
 async function main() {
+  /* Early disable for userscript */
+  const p = new URLSearchParams(location.search);
+  if (p.has("rope_disabled")) {
+    return;
+  }
+
   /* HACK? try to override csp */
   const parsedScripts = await (async function() {
     window.stop();
