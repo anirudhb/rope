@@ -1,6 +1,7 @@
 // Rope menu
 import * as plugins from "../plugins";
 import {
+  Alert as AlertI,
   Tabs as TabsI,
   TabsItemData,
   FieldSet as FieldSetI,
@@ -11,6 +12,7 @@ import {
 import { WebpackImported } from "jspatching/webpack";
 
 export default plugins.wirePlugin({
+  AlertI,
   FieldSetI,
   LegendI,
   LabelI,
@@ -30,14 +32,15 @@ export default plugins.wirePlugin({
       //};
     },
   },
-  init(api, { FieldSetI, LegendI, LabelI, MrkdwnElementI, extraModules: { menuConfigUi: menuConfigUiI } }) {
+  init(api, { AlertI, FieldSetI, LegendI, LabelI, MrkdwnElementI, extraModules: { menuConfigUi: menuConfigUiI } }) {
     return {
       modules: [],
       components: [{
         debugName: "rope-menu-tabs-patch",
         componentName: "Tabs",
-        dependencies: [MrkdwnElementI, FieldSetI, LegendI, LabelI],
+        dependencies: [AlertI, MrkdwnElementI, FieldSetI, LegendI, LabelI],
         patch: (require, React, Tabs: WebpackImported<typeof TabsI>) => {
+          const Alert = api.webpack.requireWebpackExport(require, AlertI);
           const MrkdwnElement = api.webpack.requireWebpackExport(require, MrkdwnElementI);
           const FieldSet = api.webpack.requireWebpackExport(require, FieldSetI);
           const Legend = api.webpack.requireWebpackExport(require, LegendI);
@@ -64,6 +67,10 @@ export default plugins.wirePlugin({
 
             return <FieldSet id="rope-plugins-list">
               <Legend className="margin_bottom_100">Rope plugins</Legend>
+              <Alert level="info" type="boxed">
+                Changes require a reload to take effect.
+              </Alert>
+              <br />
               {plugins_.map(i => <div key={i.id}>
                 <Label
                   type="inline"
@@ -87,7 +94,7 @@ export default plugins.wirePlugin({
                 })()}
               </div>)}
               <hr/>
-              <MrkdwnElement text={`Plugin configurations are stored in \`localStorage\`.\nSome plugins may require a reload to properly take effect.\nThings are unstable and may break, your computer might even catch on fire. Please report any bugs!`} />
+              <MrkdwnElement text={`Plugin configurations are stored in \`localStorage\`.\nThings are unstable and may break, your computer might even catch on fire. Please report any bugs!`} />
             </FieldSet>
           }
 

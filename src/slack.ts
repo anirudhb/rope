@@ -1098,3 +1098,11 @@ export const BlockKitRenderer = react.componentMatcher<{
   serviceId?: string;
   showConfirmDialog?: AnyFunction;
 }>("WrappedConnect(withFocusTransition(auto-metrics(BlockKitRenderer)))");
+export const Alert = react.componentMatcher<React.PropsWithChildren<{
+  className?: string;
+  customIcon?: React.ReactNode;
+  "data-qa"?: string;
+  heading?: React.ReactNode;
+  level: "info";
+  type: "boxed";
+}>>("Alert");
