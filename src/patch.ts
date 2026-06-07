@@ -3,7 +3,7 @@
 import { sha256 } from "js-sha256";
 import { getComponentName, patchedComponent } from "jspatching/react";
 
-import { _3type_webpack_require_type, _3type_WebpackPatch, tryFindWebpackExportId, WebpackExportId, WebpackMatcher } from "jspatching/webpack";
+import { _3type_webpack_require_type, _3type_WebpackPatch, requireWebpackExport, tryFindWebpackExportId, WebpackExportId, WebpackMatcher } from "jspatching/webpack";
 
 /**
  * Converts a map of map of Webpack matchers into export IDs.
@@ -150,7 +150,7 @@ export type RopeReactPatch<P = {}> = {
 /**
  * Consolidates React patches into a single RopePatchedObject for React.createElement.
  */
-export function consolidateReactPatches(reactIds: WebpackExportId[], patches: RopeReactPatch[]): RopePatchedObject[] {
+export function consolidateReactPatches(reactIds: WebpackExportId[], jsxIds: WebpackExportId[], patches: RopeReactPatch[]): RopePatchedObject[] {
   //const sym_RopePatched = Symbol.for("Rope.ReactPatched");
   //const sym_RopeOriginal = Symbol.for("Rope.ReactOriginal");
   const patchesByComponent = new Map();
@@ -160,45 +160,100 @@ export function consolidateReactPatches(reactIds: WebpackExportId[], patches: Ro
     patchesByComponent.get(p.componentName).push(p);
   }
 
-  return reactIds.map(reactId => ({
+  const patchedComponents = new WeakMap();
+  const patchedComponents2 = new Map();
+  const notPatched = new WeakSet();
+  const originals = new Map();
+
+  function patchType(type: any, require: _3type_webpack_require_type, react: typeof import("react")): any {
+    const orig = type;
+    if (!(typeof type === "object" || typeof type === "function" || typeof type === "symbol") || notPatched.has(type)) {
+      /* do nothing */
+    } else if (notPatched.has(type)) {
+      /* do nothing */
+    } else if (originals.has(type)) {
+      type = originals.get(type);
+    } else if (typeof type === "symbol") {
+      /* do nothing */
+    } else if (patchedComponents.has(type)) {
+      type = patchedComponents.get(type);
+    } else {
+      const name = getComponentName(type);
+      if (patchedComponents2.has(name)) {
+        type = patchedComponents2.get(name);
+        patchedComponents.set(orig, type);
+      } else if (patchesByComponent.has(name)) {
+        //const orig2 = (props: any) => orig(props);
+        //orig2.displayName = `OriginalThunk(${name})`;
+        //notPatched.add(orig2);
+        const origSymbol = Symbol(`Rope.Original.${name}`);
+        originals.set(origSymbol, orig);
+        type = origSymbol;
+        for (const p of patchesByComponent.get(name)) {
+          console.log(`[Rope] Running React component patch ${p.debugName} for component ${p.componentName}`);
+          type = p.patch(require, react, type);
+        }
+        patchedComponents2.set(name, type);
+        patchedComponents.set(orig, type);
+      } else {
+        notPatched.add(type);
+      }
+    }
+    return type;
+  }
+
+  if (reactIds.length <= 0) {
+    return [];
+  }
+
+  ///* FIXME: this may be bad */
+  //let orig_createElement = null;
+  //let orig_jsx = null;
+  //let orig_jsxs = null;
+
+  const sym_patchedCreator = Symbol.for("Rope.React.PatchedCreator");
+
+  const reactPatches = reactIds.map(reactId => ({
     exportId: { ...reactId, export: "createElement" },
     debugName: "rope-consolidated-react-createElement-patches",
     dependencies: patches.map(p=>p.dependencies ?? []).flat(),
     method: "module",
     patch: (require, real__createElement: typeof import("react").createElement, module, _exports): typeof import("react").createElement => {
-      const patchedComponents = new WeakMap();
-      const patchedComponents2 = new Map();
-      const notPatched = new WeakSet();
-
-      return function(type: any, props: any, ...children: any[]) {
-        const orig = type;
-        if (!(typeof type === "object" || typeof type === "function") || notPatched.has(type)) {
-          /* do nothing */
-        } else if (patchedComponents.has(type)) {
-          type = patchedComponents.get(type);
-        } else {
-          const name = getComponentName(type);
-          if (name)
-            console.log(`[Rope] Rendering potentially patchable component ${name}`, props);
-          if (patchedComponents2.has(name)) {
-            type = patchedComponents2.get(name);
-            patchedComponents.set(orig, type);
-          } else if (patchesByComponent.has(name)) {
-            const orig2 = (props: any) => real__createElement(orig, props);
-            orig2.displayName = `OriginalThunk(${name})`;
-            type = orig2;
-            for (const p of patchesByComponent.get(name)) {
-              console.log(`[Rope] Running React component patch ${p.debugName} for component ${p.componentName}`);
-              type = p.patch(require, module.exports, type);
-            }
-            patchedComponents2.set(name, type);
-            patchedComponents.set(orig, type);
-          } else {
-            notPatched.add(type);
-          }
-        }
+      // Helps avoid issues for two modules pointing to the same functions
+      if (real__createElement[sym_patchedCreator] === true) {
+        return real__createElement;
+      }
+      const f = function(type: any, props: any, ...children: any[]) {
+        type = patchType(type, require, module.exports);
         return real__createElement(type, props, ...children) as any;
       };
+      f[sym_patchedCreator] = true;
+      return f;
     },
   }) satisfies RopePatchedObject);
+  /* The jsx patches will still need a reference to the React module to keep the API consistent */
+  const canonicalReactId = reactIds[0];
+  const jsxPatches = jsxIds.map(jsxId => ["jsx", "jsxs"].map(k => ({
+    exportId: { ...jsxId, export: k },
+    debugName: "rope-consolidated-react-jsx-patches",
+    dependencies: [canonicalReactId, ...patches.map(p=>p.dependencies ?? []).flat()],
+    method: "module",
+    /* Type of real__jsx is "close enough" */
+    patch: (require, real__jsx: typeof import("react").createElement, _module, _exports) => {
+      // Helps avoid issues for two modules pointing to the same functions
+      if (real__jsx[sym_patchedCreator] === true) {
+        return real__jsx;
+      }
+
+      const canonicalReact = requireWebpackExport(require, canonicalReactId);
+      const f = function(type: any, ...args: any[]) {
+        type = patchType(type, require, canonicalReact);
+        return real__jsx(type, ...args);
+      };
+      f[sym_patchedCreator] = true;
+      return f;
+    },
+  }) satisfies RopePatchedObject)).flat();
+
+  return [...reactPatches, ...jsxPatches];
 }

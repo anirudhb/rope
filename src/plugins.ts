@@ -179,6 +179,10 @@ function getCachedExportMatchers(): Record<string, Record<string, webpack.Webpac
       let x = react.ReactMatcher;
       (x as any).all = true;
       return x;
+    })(), ReactJsx: (() => {
+      let x = react.ReactJsxMatcher;
+      (x as any).all = true;
+      return x;
     })(), },
   };
 }
