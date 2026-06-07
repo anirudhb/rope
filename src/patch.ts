@@ -9,7 +9,7 @@ import { _3type_webpack_require_type, _3type_WebpackPatch, tryFindWebpackExportI
  * Converts a map of map of Webpack matchers into export IDs.
  */
 export function lookupWebpackModulesBulk(chunkName: string, matchers: Record<string, Record<string, WebpackMatcher>>):
-  Record<string, Record<string, WebpackExportId | null>> {
+  Record<string, Record<string, WebpackExportId | WebpackExportId[] | null>> {
   // Avoids searching twice for the same matcher function
   const foundModules = new Map();
   const out = {};
@@ -19,7 +19,7 @@ export function lookupWebpackModulesBulk(chunkName: string, matchers: Record<str
     for (const [k2, matcher] of Object.entries(m)) {
       let id = foundModules.get(matcher);
       if (typeof id === "undefined") {
-        id = tryFindWebpackExportId(chunkName, matcher);
+        id = tryFindWebpackExportId(chunkName, matcher, matcher.all ?? false);
         if (id === null) {
           throw new Error(`[Rope] Failed to find webpack export id for ${k1}.${k2}!`);
         }
@@ -50,6 +50,8 @@ export function hashWebpackMatchers(matchers: Record<string, Record<string, Webp
       hasher.update(ik);
       hasher.update("\0");
       hasher.update(i.toString());
+      hasher.update("\0");
+      hasher.update(i.all?.toString() ?? "null");
       hasher.update("\0\0");
     }
   }
@@ -148,7 +150,7 @@ export type RopeReactPatch<P = {}> = {
 /**
  * Consolidates React patches into a single RopePatchedObject for React.createElement.
  */
-export function consolidateReactPatches(reactId: WebpackExportId, patches: RopeReactPatch[]): RopePatchedObject {
+export function consolidateReactPatches(reactIds: WebpackExportId[], patches: RopeReactPatch[]): RopePatchedObject[] {
   //const sym_RopePatched = Symbol.for("Rope.ReactPatched");
   //const sym_RopeOriginal = Symbol.for("Rope.ReactOriginal");
   const patchesByComponent = new Map();
@@ -158,10 +160,11 @@ export function consolidateReactPatches(reactId: WebpackExportId, patches: RopeR
     patchesByComponent.get(p.componentName).push(p);
   }
 
-  return {
+  return reactIds.map(reactId => ({
     exportId: { ...reactId, export: "createElement" },
     debugName: "rope-consolidated-react-createElement-patches",
     dependencies: patches.map(p=>p.dependencies ?? []).flat(),
+    method: "module",
     patch: (require, real__createElement: typeof import("react").createElement, module, _exports): typeof import("react").createElement => {
       const patchedComponents = new WeakMap();
       const patchedComponents2 = new Map();
@@ -175,6 +178,8 @@ export function consolidateReactPatches(reactId: WebpackExportId, patches: RopeR
           type = patchedComponents.get(type);
         } else {
           const name = getComponentName(type);
+          if (name)
+            console.log(`[Rope] Rendering potentially patchable component ${name}`, props);
           if (patchedComponents2.has(name)) {
             type = patchedComponents2.get(name);
             patchedComponents.set(orig, type);
@@ -195,5 +200,5 @@ export function consolidateReactPatches(reactId: WebpackExportId, patches: RopeR
         return real__createElement(type, props, ...children) as any;
       };
     },
-  };
+  }) satisfies RopePatchedObject);
 }

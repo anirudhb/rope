@@ -29,6 +29,8 @@ export type RopePatches = {
 export type TransformedImports<I extends Record<string, WebpackMatcher>> = {
   [K in keyof I]: I[K] extends WebpackMatcher<infer T> ? WebpackExportId<T> : never;
 } & {
+  // This is truly WebpackExportId | WebpackExportId[]
+  // but we do not expect user code to use {all: true}
   extraModules: Record<string, WebpackExportId>;
 };
 export type RopePluginInit<C = undefined, I extends Record<string, WebpackMatcher> = {}> =

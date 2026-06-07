@@ -84,9 +84,10 @@ function main() {
       reactPatches.push(...patches.components);
     }
     console.log(patchedObjects);
+    console.log(reactPatches);
 
     // Build React patch
-    patchedObjects.unshift(patch.consolidateReactPatches(cachedExports.rope.React, reactPatches));
+    patchedObjects.unshift(...patch.consolidateReactPatches(cachedExports.rope.React as webpack.WebpackExportId[], reactPatches));
 
     // Consolidate and patch
     const webpackPatches = patch.createAndConsolidatePatches(patchedObjects);

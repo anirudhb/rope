@@ -175,11 +175,15 @@ function getCachedExportMatchers(): Record<string, Record<string, webpack.Webpac
     .map(([id, m]) => [id, m.imports]));
   return {
     ...x1,
-    rope: { React: react.ReactMatcher },
+    rope: { React: (() => {
+      let x = react.ReactMatcher;
+      (x as any).all = true;
+      return x;
+    })(), },
   };
 }
 
-export function getCachedExportIds(): Record<string, Record<string, webpack.WebpackExportId>> | null {
+export function getCachedExportIds(): Record<string, Record<string, webpack.WebpackExportId | webpack.WebpackExportId[]>> | null {
   const matchers = getCachedExportMatchers();
   const key = `rope-cached-export-ids-${hashWebpackMatchers(matchers)}`;
   const i = localStorage.getItem(key);
