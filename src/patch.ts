@@ -64,6 +64,7 @@ export type RopePatchedObject = {
   debugName: string;
   patch: (require: _3type_webpack_require_type, orig: any, module: any, exports: any) => any;
   dependencies?: WebpackExportId[];
+  method?: "module" | "exports";
 };
 /**
  * Creates and consolidates patches from a list of patched objects.
@@ -118,19 +119,29 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
       for (const [prop, patches2] of Object.entries(patches.props)) {
         /* Determine how to get and set this prop
          * Try getters on exports, then module.exports */
-        const getProp = Object.hasOwn(exports, prop)
-          ? () => exports[prop]
-          : Object.hasOwn(module.exports, prop)
-            ? () => module.exports[prop]
-            : null;
-        const setProp = Object.hasOwn(exports, prop)
-          ? (v: any) => Object.defineProperty(exports, prop, { get: () => v, configurable: true })
-          : Object.hasOwn(module.exports, prop)
-            ? (v: any) => module.exports[prop] = v
-            : null;
-        if (getProp === null || setProp === null) continue;
+        const getPropE = () => exports[prop];
+        const getPropM = () => module.exports[prop];
+        const setPropE = (v: any) => Object.defineProperty(exports, prop, { get: () => v, configurable: true });
+        const setPropM = (v: any) => module.exports[prop] = v;
 
         for (const pp of patches2) {
+          let getProp: () => any = null;
+          let setProp: (_: any) => void = null;
+          if (pp.method === "exports") {
+            getProp = getPropE;
+            setProp = setPropE;
+          } else if (pp.method === "module") {
+            getProp = getPropM;
+            setProp = setPropM;
+          } else if (Object.hasOwn(exports, prop)) {
+            getProp = getPropE;
+            setProp = setPropE;
+          } else if (Object.hasOwn(module.exports, prop)) {
+            getProp = getPropM;
+            setProp = setPropM;
+          }
+          if (getProp === null || setProp === null) continue;
+
           console.log(`[Rope] Running property patch ${pp.debugName} for property ${prop} of module ${moduleId}`);
           const dependentChunkIds = (pp.dependencies ?? []).map(x=>x.moduleId.chunkIds).flat();
           await Promise.all(dependentChunkIds.map(x=>(require as any).e(x)));
