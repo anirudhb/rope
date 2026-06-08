@@ -14,16 +14,14 @@ import { sha256 } from "js-sha256";
 
 ////////
 
-function main() {
-  /* Parse options from query string */
-  const p = new URLSearchParams(location.search);
-  if (p.has("rope_disabled")) {
-    return;
-  }
-
+function main({ safeMode }: {
+  safeMode: boolean;
+}) {
   ///////
   /* Gather plugin metadata */
-  const ropePlugins: plugins.RopePlugin[] = [
+  const ropePlugins: plugins.RopePlugin[] = safeMode ? [
+    menuPlugin,
+  ] : [
     menuPlugin,
     IdvStatus,
     InvisibleForward,
@@ -37,7 +35,7 @@ function main() {
   // ensure menu is enabled
   plugins.setRopePluginEnabled(menuPlugin.id, true);
 
-  const cachedExports = plugins.getCachedExportIds();
+  const cachedExports = plugins.getCachedExportIds(safeMode);
   if (cachedExports) {
     console.log(`[Rope] Found cached metadata`);
     // Build patched object list
@@ -103,6 +101,25 @@ function main() {
     ]);
   } else {
     console.log(`[Rope] No cached metadata found`);
+
+    /** Hacky? */
+    const overlayEl = document.createElement("div");
+    overlayEl.style.setProperty("position", "absolute");
+    overlayEl.style.setProperty("bottom", "16px");
+    overlayEl.style.setProperty("left", "16px");
+    overlayEl.style.setProperty("padding", "32px");
+    overlayEl.style.setProperty("font-size", "2em");
+    overlayEl.style.setProperty("font-family", "sans-serif");
+    overlayEl.style.setProperty("border-radius", "5px");
+    overlayEl.style.setProperty("background-color", "white");
+    overlayEl.style.setProperty("border", "1px solid black");
+    overlayEl.style.setProperty("z-index", "999999999");
+    overlayEl.textContent = "Click here when Slack is loaded to enable Rope";
+    overlayEl.onclick = () => {
+      (globalThis as any).ropeCache();
+      location.reload();
+    };
+    document.body.appendChild(overlayEl);
   }
 
   (globalThis as any).ropeCache = () => {
@@ -111,4 +128,39 @@ function main() {
   };
 }
 
-main();
+function init() {
+  /* Parse options from query string */
+  const p = new URLSearchParams(location.search);
+  const freshP = new URLSearchParams(location.search);
+  if (p.has("rope_disabled")) {
+    return;
+  }
+
+  freshP.forEach((_val, key, self) => {
+    if (/^rope/.test(key)) {
+      self.delete(key);
+    }
+  });
+
+  const safeMode = p.has("rope_safe_mode");
+  let errorCtr = parseInt(p.get("rope_errors") ?? "0", 10);
+
+  try {
+    main({
+      safeMode: p.has("rope_safe_mode"),
+    });
+  } catch {
+    if (safeMode) {
+      freshP.append("rope_disabled", "1");
+    } else {
+      if (errorCtr++ >= 3) {
+        freshP.append("rope_safe_mode", "1");
+      } else {
+        freshP.append("rope_errors", errorCtr.toString());
+      }
+    }
+    location.search = freshP.toString();
+  }
+}
+
+init();

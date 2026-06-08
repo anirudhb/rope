@@ -187,9 +187,9 @@ function getCachedExportMatchers(): Record<string, Record<string, webpack.Webpac
   };
 }
 
-export function getCachedExportIds(): Record<string, Record<string, webpack.WebpackExportId | webpack.WebpackExportId[]>> | null {
+export function getCachedExportIds(safeMode: boolean = false): Record<string, Record<string, webpack.WebpackExportId | webpack.WebpackExportId[]>> | null {
   const matchers = getCachedExportMatchers();
-  const key = `rope-cached-export-ids-${hashWebpackMatchers(matchers)}`;
+  const key = `rope-cached-export-ids-${safeMode ? "safeMode" : hashWebpackMatchers(matchers)}`;
   const i = localStorage.getItem(key);
   if (i)
     return JSON.parse(i);
@@ -202,6 +202,11 @@ export function refreshCachedExportIds() {
   const matchers = getCachedExportMatchers();
   const key = `rope-cached-export-ids-${hashWebpackMatchers(matchers)}`;
   const ids = lookupWebpackModulesBulk(chunkName, matchers);
+  const keySafe = `rope-cached-export-ids-safeMode`;
+  const idsSafe = lookupWebpackModulesBulk(chunkName, {
+    menu: matchers.menu,
+    rope: matchers.rope,
+  });
   /* Delete existing keys */
   for (const k of Object.keys(localStorage)) {
     if (k.startsWith("rope-cached-export-ids-")) {
@@ -209,6 +214,7 @@ export function refreshCachedExportIds() {
     }
   }
   localStorage.setItem(key, JSON.stringify(ids));
+  localStorage.setItem(keySafe, JSON.stringify(idsSafe));
 }
 
 /* expose on window */
