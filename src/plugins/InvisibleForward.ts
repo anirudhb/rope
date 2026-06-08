@@ -37,18 +37,21 @@ export default wirePlugin({
         exportId: chatPostMessageI,
         debugName: "invisibleforward-chatpostmessage-patch",
         patch: (_require, orig) => {
-          return function(arg: any) {
+          const f = function(arg: any) {
             if (arg?.message && arg.message.blocks) {
+              _api.log(arg.message);
               for (const b of arg.message.blocks)
                 if (b?.type === "rich_text")
                   for (const e of b?.elements)
                     if (e?.type === "rich_text_section")
                       for (const e2 of e?.elements)
-                        if (e2?.type === "link" && isSlackUrl(e2?.url))
+                        if (e2?.type === "link" && isSlackUrl(e2?.url) && !e2?.text)
                           e2.text = "\u2060";
             }
             return orig(arg);
           };
+          f.meta = { name: "chatPostMessage" };
+          return f;
         },
       }],
       components: [],
