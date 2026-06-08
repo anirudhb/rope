@@ -9,6 +9,7 @@ import menuPlugin from "./plugins/menu";
 import IdvStatus from "./plugins/IdvStatus";
 import InvisibleForward from "./plugins/InvisibleForward";
 import PrivateChannelMapper from "./plugins/PrivateChannelMapper";
+import SilentTyping from "./plugins/SilentTyping";
 import { sha256 } from "js-sha256";
 
 ////////
@@ -27,6 +28,7 @@ function main() {
     IdvStatus,
     InvisibleForward,
     PrivateChannelMapper,
+    SilentTyping,
   ];
 
   for (const p of ropePlugins)

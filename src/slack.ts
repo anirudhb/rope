@@ -162,6 +162,7 @@ export const Legend = react.componentMatcher<React.PropsWithChildren<{
 }>>("Legend");
 export const SvgIcon = react.componentMatcher<{
   inline?: boolean;
+  size?: number;
   name:
   | "add-bot"
   | "add-branch"
@@ -834,6 +835,20 @@ export const SvgIcon = react.componentMatcher<{
   | "zoom-in"
   | "zoom-out";
 }>("SvgIcon");
+export const IconButtonBase = react.componentMatcher<React.PropsWithChildren<{
+  "aria-label"?: string;
+  className?: string;
+  "data-qa"?: string;
+  "data-sk"?: string;
+  onBlur?: AnyFunction;
+  onClick?: AnyFunction;
+  onFocus?: AnyFunction;
+  onKeyDown?: AnyFunction;
+  onMouseEnter?: AnyFunction;
+  onMouseLeave?: AnyFunction;
+  size?: "smedium";
+  tabIndex?: number;
+}>>("IconButtonBase");
 export const Label = react.componentMatcher<React.PropsWithChildren<{
   cursor?: "pointer";
   htmlFor?: string;
@@ -853,8 +868,14 @@ export const Tooltip = react.componentMatcher<React.PropsWithChildren<{
   delay: number;
   // default false(?)
   hideFromScreenReader?: boolean;
-  tip: () => React.ReactNode;
+  tip: (() => React.ReactNode) | React.ReactNode;
+  offsetY?: number;
+  position?: "top";
+  zIndex?: "above_fs";
 }>>("Tooltip");
+export const TextyButtons = react.componentMatcher<{
+  // TODO
+}>("TextyButtons");
 export const BaseMrkdwnChannel = react.componentMatcher<{
   alwaysDisplayAsLink?: boolean;
   channelHasNonUniqueName?: boolean;
@@ -1045,6 +1066,11 @@ export const MessageInput = react.componentMatcher<{
   windowRef?: WeakRef<any>;
   windowToken?: any;
 }>("MessageInput");
+export const MessagePaneInput = react.componentMatcher<{
+  // bound action creators
+  currentUserStartedTyping: AnyFunction;
+  currentUserEndedTyping: AnyFunction;
+}>("MessagePaneInput");
 export const ComposerAttachments = react.componentMatcher<{
   channelId?: string;
   draftFiles: any[];

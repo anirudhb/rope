@@ -152,7 +152,7 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
   }));
 }
 
-export type RopeReactPatch<P = {}> = {
+export type RopeReactPatch<P = any> = {
   componentName: string;
   debugName: string;
   patch: (require: _3type_webpack_require_type, react: typeof import("react"), orig: React.FC<P>) => React.FC<P>;
