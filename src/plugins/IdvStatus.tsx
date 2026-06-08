@@ -145,7 +145,7 @@ export default wirePlugin({
     document.head.appendChild(idvStatusStyle);
 
     loadIdvCache();
-    globalThis.tautIdvClearCache = clearCache;
+    (globalThis as any).tautIdvClearCache = clearCache;
 
     return {
       modules: [],

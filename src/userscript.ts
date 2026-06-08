@@ -58,7 +58,7 @@ async function main() {
   await import("./main");
 
   // rerun scripts
-  document.querySelectorAll("script").forEach(s => s.parentNode.removeChild(s));
+  document.querySelectorAll("script").forEach(s => s.parentNode?.removeChild(s));
   for (const s of parsedScripts) {
     const scriptEl = document.createElement("script");
     if (s.type)

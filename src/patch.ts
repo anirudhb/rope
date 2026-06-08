@@ -1,7 +1,7 @@
 /** Handles patch transformations */
 
 import { sha256 } from "js-sha256";
-import { getComponentName, patchedComponent } from "jspatching/react";
+import { getComponentName } from "jspatching/react";
 
 import { _3type_webpack_require_type, _3type_WebpackPatch, requireWebpackExport, tryFindWebpackExportId, WebpackExportId, WebpackMatcher } from "jspatching/webpack";
 
@@ -12,7 +12,7 @@ export function lookupWebpackModulesBulk(chunkName: string, matchers: Record<str
   Record<string, Record<string, WebpackExportId | WebpackExportId[] | null>> {
   // Avoids searching twice for the same matcher function
   const foundModules = new Map();
-  const out = {};
+  const out: Record<string, Record<string, WebpackExportId | WebpackExportId[] | null>> = {};
 
   for (const [k1, m] of Object.entries(matchers)) {
     out[k1] = {};
@@ -125,8 +125,8 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
         const setPropM = (v: any) => module.exports[prop] = v;
 
         for (const pp of patches2) {
-          let getProp: () => any = null;
-          let setProp: (_: any) => void = null;
+          let getProp: () => any;
+          let setProp: (_: any) => void;
           if (pp.method === "exports") {
             getProp = getPropE;
             setProp = setPropE;
@@ -139,8 +139,10 @@ export function createAndConsolidatePatches(patches: RopePatchedObject[]): _3typ
           } else if (Object.hasOwn(module.exports, prop)) {
             getProp = getPropM;
             setProp = setPropM;
+          } else {
+            // unreachable
+            continue;
           }
-          if (getProp === null || setProp === null) continue;
 
           console.log(`[Rope] Running property patch ${pp.debugName} for property ${prop} of module ${moduleId}`);
           const dependentChunkIds = (pp.dependencies ?? []).map(x=>x.moduleId.chunkIds).flat();
@@ -231,7 +233,7 @@ export function consolidateReactPatches(reactIds: WebpackExportId[], jsxIds: Web
     method: "module",
     patch: (require, real__createElement: typeof import("react").createElement, module, _exports): typeof import("react").createElement => {
       // Helps avoid issues for two modules pointing to the same functions
-      if (real__createElement[sym_patchedCreator] === true) {
+      if ((real__createElement as any)[sym_patchedCreator] === true) {
         return real__createElement;
       }
       const f = function(type: any, props: any, ...children: any[]) {
@@ -252,7 +254,7 @@ export function consolidateReactPatches(reactIds: WebpackExportId[], jsxIds: Web
     /* Type of real__jsx is "close enough" */
     patch: (require, real__jsx: typeof import("react").createElement, _module, _exports) => {
       // Helps avoid issues for two modules pointing to the same functions
-      if (real__jsx[sym_patchedCreator] === true) {
+      if ((real__jsx as any)[sym_patchedCreator] === true) {
         return real__jsx;
       }
 

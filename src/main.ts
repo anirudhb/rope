@@ -45,13 +45,13 @@ function main() {
     const reactPatches = [];
     const newModulesChunkId = "rope_new_modules";
     const newModuleIds: Record<string, webpack.WebpackExportId> = {};
-    const newModules = {};
+    const newModules: Record<number, webpack._3type_webpack_module_function> = {};
 
     // First pass - collect new modules
     for (const m of Object.keys(cachedExports)) {
       if (m === "rope") continue;
 
-      const p = plugins.__ropePluginRegistry.get(m);
+      const p = plugins.__ropePluginRegistry.get(m)!;
       console.log(`[Rope] Early scanning new modules for plugin ${p.id} (${p.meta.name})`);
       for (const [k, mm] of Object.entries(p.newModules ?? {})) {
         const h = parseInt(sha256(k).slice(0, 8), 16);
@@ -74,13 +74,13 @@ function main() {
       // FIXME
       if (m === "rope") continue;
 
-      const p = plugins.__ropePluginRegistry.get(m);
+      const p = plugins.__ropePluginRegistry.get(m)!;
       console.log(`[Rope] Initializing plugin ${p.id} (${p.meta.name})`);
       const i = plugins.getPersistedRopePluginInfo(p.id);
       if (i.config === null && p.defaultConfig)
         i.config = p.defaultConfig;
       const api = plugins.createRopePluginAPI(p.id);
-      const patches = p.init(api, { ...ids, extraModules: newModuleIds }, i.config);
+      const patches = p.init(api, { ...ids, extraModules: newModuleIds } as any, i.config);
       // XXX: We don't need to add the new chunk as a dependency since it is always loaded first
       patchedObjects.push(...patches.modules);
       reactPatches.push(...patches.components);
@@ -105,7 +105,7 @@ function main() {
     console.log(`[Rope] No cached metadata found`);
   }
 
-  globalThis.ropeCache = () => {
+  (globalThis as any).ropeCache = () => {
     plugins.refreshCachedExportIds();
     console.log(`[Rope] Cached metadata ready! Reload the page`);
   };

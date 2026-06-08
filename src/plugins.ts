@@ -10,7 +10,7 @@ export type { RopePlugin } from "./api";
 const chunkName = "webpackChunkwebapp";
 
 export function wirePlugin<
-  const I extends {},
+  const I extends Record<string, webpack.WebpackMatcher>,
   const P extends Omit<RopePlugin<C, I>, "imports" | "defaultConfig">,
   const C,
 >(i: I, d: C, p: P): RopePlugin<C, I> {
@@ -25,8 +25,8 @@ type PersistedRopePluginInfo = {
 
 export let __ropePluginRegistry = new Map<string, RopePlugin & { defaultConfig?: any; }>();
 
-if (globalThis.__ropePluginRegistry)
-  __ropePluginRegistry = globalThis.__ropePluginRegistry;
+if ((globalThis as any).__ropePluginRegistry)
+  __ropePluginRegistry = (globalThis as any).__ropePluginRegistry;
 
 export function registerRopePlugin<C = any>(plugin: RopePlugin<C>) {
   if (__ropePluginRegistry.has(plugin.id))
@@ -72,18 +72,18 @@ export function getPersistedRopePluginInfo(id: string): PersistedRopePluginInfo 
     localStorage.setItem(k, JSON.stringify(o));
     return localStorageProxy(k, o);
   } else {
-    const o = JSON.parse(localStorage.getItem(k));
+    const o = JSON.parse(localStorage.getItem(k)!);
     return localStorageProxy(k, o);
   }
 }
 
 /* React hook for localStorage JSON */
 function useLocalStorage<T>(React: typeof import("react"), key: string): [T, (x: T) => void] {
-  const [value, setValue] = React.useState(() => JSON.parse(localStorage.getItem(key)));
+  const [value, setValue] = React.useState(() => JSON.parse(localStorage.getItem(key)!));
 
   function listener(e: StorageEvent) {
     if (e.key === key)
-      setValue(JSON.parse(localStorage.getItem(key)));
+      setValue(JSON.parse(localStorage.getItem(key)!));
   }
 
   React.useEffect(() => {
@@ -219,5 +219,5 @@ let o = {
 };
 
 for (const [k, v] of Object.entries(o)) {
-  globalThis[k] = v;
+  (globalThis as any)[k] = v;
 }

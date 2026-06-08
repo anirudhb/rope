@@ -3,7 +3,7 @@
 import { _3type_webpack_module_function, WebpackExportId, WebpackMatcher } from "jspatching/webpack";
 import { RopePatchedObject, RopeReactPatch } from "./patch";
 
-export type RopeAPI<C = undefined> = {
+export type RopeAPI<C = any> = {
   webpack: typeof import("jspatching/webpack");
   react: typeof import("jspatching/react");
   plugins: typeof import("./plugins");
@@ -33,9 +33,9 @@ export type TransformedImports<I extends Record<string, WebpackMatcher>> = {
   // but we do not expect user code to use {all: true}
   extraModules: Record<string, WebpackExportId>;
 };
-export type RopePluginInit<C = undefined, I extends Record<string, WebpackMatcher> = {}> =
+export type RopePluginInit<C = any, I extends Record<string, WebpackMatcher> = any> =
   (api: RopeAPI<C>, imports: TransformedImports<I>, config: C) => RopePatches;
-export type RopePlugin<C = undefined, I extends Record<string, WebpackMatcher> = {}> = {
+export type RopePlugin<C = any, I extends Record<string, WebpackMatcher> = any> = {
   /* should be unique! */
   id: string;
   /* markdown supported in all fields */
@@ -48,6 +48,6 @@ export type RopePlugin<C = undefined, I extends Record<string, WebpackMatcher> =
   imports: I;
   /* can be an arbitrary string, will be hashed to a deterministic number */
   newModules?: Record<string, _3type_webpack_module_function>;
-} & (C extends NonNullable<infer C2> ? {
-  defaultConfig: C2;
-} : {});
+} & (C extends undefined ? {} : {
+  defaultConfig: C;
+});

@@ -8,6 +8,8 @@
     "skipLibCheck": true,
     "moduleResolution": "bundler",
     "allowUmdGlobalAccess": true,
+    "noImplicitAny": true,
+    "strictNullChecks": true,
     "jsx": "react"
   },
   "references": [

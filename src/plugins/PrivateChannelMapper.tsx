@@ -12,8 +12,8 @@ import {
 
 type PrivateChannelDbProvider = "jmeow" | "sahil" | null;
 
-let lastFetchTimes = {};
-let pendingFetches = {};
+let lastFetchTimes: Record<string, number> = {};
+let pendingFetches: Record<string, Promise<any>> = {};
 
 // Debounces calls to fetch a private channel's name.
 // The given callback is only called if the debounce period is met.
@@ -96,9 +96,9 @@ export default wirePlugin({
           return {
             ...orig,
             PrivateChannelMapper: (React: typeof import("react")) => {
-              const Label = api.webpack.requireWebpackExport(require, LabelI);
-              const Legend = api.webpack.requireWebpackExport(require, LegendI);
-              const MrkdwnElement = api.webpack.requireWebpackExport(require, MrkdwnElementI);
+              const Label = api.webpack.requireWebpackExport(require, LabelI)!;
+              const Legend = api.webpack.requireWebpackExport(require, LegendI)!;
+              const MrkdwnElement = api.webpack.requireWebpackExport(require, MrkdwnElementI)!;
 
               return function PrivateChannelMapperConfigUi() {
                 const [provider, setProvider] = api.usePluginConfig(React,

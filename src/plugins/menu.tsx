@@ -40,13 +40,13 @@ export default plugins.wirePlugin({
         componentName: "Tabs",
         dependencies: [AlertI, MrkdwnElementI, FieldSetI, LegendI, LabelI],
         patch: (require, React, Tabs: WebpackImported<typeof TabsI>) => {
-          const Alert = api.webpack.requireWebpackExport(require, AlertI);
-          const MrkdwnElement = api.webpack.requireWebpackExport(require, MrkdwnElementI);
-          const FieldSet = api.webpack.requireWebpackExport(require, FieldSetI);
-          const Legend = api.webpack.requireWebpackExport(require, LegendI);
-          const Label = api.webpack.requireWebpackExport(require, LabelI);
+          const Alert = api.webpack.requireWebpackExport(require, AlertI)!;
+          const MrkdwnElement = api.webpack.requireWebpackExport(require, MrkdwnElementI)!;
+          const FieldSet = api.webpack.requireWebpackExport(require, FieldSetI)!;
+          const Legend = api.webpack.requireWebpackExport(require, LegendI)!;
+          const Label = api.webpack.requireWebpackExport(require, LabelI)!;
           let menuConfigUi: any;
-          let menuConfigUiCache = {};
+          let menuConfigUiCache: Record<string, any> = {};
           // hack
           api.webpack.requireWebpackExport(require, menuConfigUiI);
 
@@ -103,7 +103,7 @@ export default plugins.wirePlugin({
                     }}
                   />
                 </Label>
-                {menuConfigUi[i.id] && React.createElement(getCachedMenuConfigUi(React, i.id))}
+                {menuConfigUi[i.id] && React.createElement(getCachedMenuConfigUi(React, i.id) ?? "span")}
               </div>)}
               <hr/>
               <MrkdwnElement text={`Plugin configurations are stored in \`localStorage\`.\nThings are unstable and may break, your computer might even catch on fire. Please report any bugs!`} />
