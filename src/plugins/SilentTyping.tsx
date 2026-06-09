@@ -2,6 +2,7 @@
 import { WebpackImported } from "jspatching/webpack";
 import { wirePlugin } from "../plugins";
 import {
+  InputContainer as InputContainerI,
   MessagePaneInput as MessagePaneInputI,
   SvgIcon as SvgIconI,
   Tooltip as TooltipI,
@@ -10,11 +11,9 @@ import {
 } from "../slack";
 
 export default wirePlugin({
-  //MessagePaneInputI,
   SvgIconI,
   TooltipI,
   IconButtonBaseI,
-  //TextyButtonsI,
 }, {
   silenceTyping: false,
 } as {
@@ -48,6 +47,26 @@ export default wirePlugin({
           });
 
           return PatchedMessagePaneInput;
+        },
+      }, {
+        componentName: "InputContainer",
+        debugName: "silenttyping-inputcontainer-patch",
+        patch: (_require, React, InputContainer: WebpackImported<typeof InputContainerI>) => {
+          const PatchedInputContainer = api.react.patchedComponent(InputContainer, props => {
+            const [typingSilenced, ] = api.usePluginConfig(React, c => c.silenceTyping);
+
+            if (typingSilenced) {
+              props = {
+                ...props,
+                currentUserEndedTyping: () => {},
+                currentUserStartedTyping: () => {}
+              };
+            }
+
+            return <InputContainer {...props} />;
+          });
+
+          return PatchedInputContainer;
         },
       }, {
         componentName: "TextyButtons",

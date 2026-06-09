@@ -1071,6 +1071,11 @@ export const MessagePaneInput = react.componentMatcher<{
   currentUserStartedTyping: AnyFunction;
   currentUserEndedTyping: AnyFunction;
 }>("MessagePaneInput");
+export const InputContainer = react.componentMatcher<{
+  // bound action creators
+  currentUserStartedTyping: AnyFunction;
+  currentUserEndedTyping: AnyFunction;
+}>("InputContainer");
 export const ComposerAttachments = react.componentMatcher<{
   channelId?: string;
   draftFiles: any[];
