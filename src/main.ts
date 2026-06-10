@@ -6,6 +6,7 @@ import * as patch from "./patch";
 const chunkName = "webpackChunkwebapp";
 
 import menuPlugin from "./plugins/menu";
+import ActuallyMrkdwn from "./plugins/ActuallyMrkdwn";
 import IdvStatus from "./plugins/IdvStatus";
 import InvisibleForward from "./plugins/InvisibleForward";
 import PrivateChannelMapper from "./plugins/PrivateChannelMapper";
@@ -23,6 +24,7 @@ function main({ safeMode }: {
     menuPlugin,
   ] : [
     menuPlugin,
+    ActuallyMrkdwn,
     IdvStatus,
     InvisibleForward,
     PrivateChannelMapper,
