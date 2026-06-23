@@ -61,12 +61,13 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
     /* Segment and push items back on the queue */
     let didSegment = false;
     const t = el.text;
+    let m: RegExpMatchArray;
 
     // Channel syntax
-    for (const m of t.matchAll(/<#(?<cid>[A-Z0-9]+)>/g)) {
+    if ((m = /<#(?<cid>[A-Z0-9]+)>/g.exec(t)!) !== null) {
       const channel_id = m.groups!.cid;
       const before = t.slice(0, m.index);
-      const after = t.slice(m.index+m[0].length);
+      const after = t.slice(m.index!+m[0].length);
       didSegment = true;
       queue.unshift({
         ...el,
@@ -84,10 +85,10 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
     if (didSegment) continue;
 
     // User syntax
-    for (const m of t.matchAll(/<@(?<uid>[A-Z0-9]+)>/g)) {
+    if ((m = /<@(?<uid>[A-Z0-9]+)>/g.exec(t)!) !== null) {
       const user_id = m.groups!.uid;
       const before = t.slice(0, m.index);
-      const after = t.slice(m.index+m[0].length);
+      const after = t.slice(m.index!+m[0].length);
       didSegment = true;
       queue.unshift({
         ...el,
@@ -105,10 +106,10 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
     if (didSegment) continue;
 
     // User group syntax
-    for (const m of t.matchAll(/<!subteam\^(?<gid>[A-Z0-9]+)>/g)) {
+    if ((m = /<!subteam\^(?<gid>[A-Z0-9]+)>/g.exec(t)!) !== null) {
       const usergroup_id = m.groups!.gid;
       const before = t.slice(0, m.index);
-      const after = t.slice(m.index+m[0].length);
+      const after = t.slice(m.index!+m[0].length);
       didSegment = true;
       queue.unshift({
         ...el,
@@ -131,9 +132,9 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
       [/<!channel>/g, "channel"],
       [/<!everyone>/g, "everyone"],
     ] as const) {
-      for (const m of t.matchAll(re)) {
+      if ((m = re.exec(t)!) !== null) {
         const before = t.slice(0, m.index);
-        const after = t.slice(m.index+m[0].length);
+        const after = t.slice(m.index!+m[0].length);
         didSegment = true;
         queue.unshift({
           ...el,
@@ -153,7 +154,7 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
 
     // Dates
     // FIXME: support easier formatting for date timestamps
-    for (const m of t.matchAll(/<!date\^(?<timestamp>[0-9]+|\{[^}]+\})\^(?<tstr>[^\^|>]+)(?:\^(?<url>[^|>]+))?(?:|(?<fb>[^>]+))?>/g)) {
+    if ((m = /<!date\^(?<timestamp>[0-9]+|\{[^}]+\})\^(?<tstr>[^\^|>]+)(?:\^(?<url>[^|>]+))?(?:|(?<fb>[^>]+))?>/g.exec(t)!) !== null) {
       let ts: number;
       try {
         ts = parseInt(m.groups!.timestamp, 10);
@@ -161,7 +162,7 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
         continue;
       }
       const before = t.slice(0, m.index);
-      const after = t.slice(m.index+m[0].length);
+      const after = t.slice(m.index!+m[0].length);
       didSegment = true;
       queue.unshift({
         ...el,
@@ -183,7 +184,7 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
 
     if (!didSegment) {
       // Resolve escapes when not segmented
-      const t2 = t.replace(/&lt;/g, "<").replace(/&gt;/g, ">");
+      const t2 = t.replace(/&lt;/g, "<").replace(/&gt;/g, ">").replace(/&amp;/g, "&");
       out.push({
         ...el,
         text: t2,
