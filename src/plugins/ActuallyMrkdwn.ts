@@ -1,5 +1,6 @@
 /** Actual (subset of) mrkdwn support */
 import { wirePlugin } from "../plugins";
+import * as chrono from "chrono-node";
 
 type RichTextElementStyle = {
   bold?: boolean;
@@ -155,11 +156,21 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
     // Dates
     // FIXME: support easier formatting for date timestamps
     if ((m = /<!date\^(?<timestamp>[0-9]+|\{[^}]+\})\^(?<tstr>[^\^|>]+)(?:\^(?<url>[^|>]+))?(?:|(?<fb>[^>]+))?>/g.exec(t)!) !== null) {
-      let ts: number;
+      let ts: number = NaN;
       try {
         ts = parseInt(m.groups!.timestamp, 10);
-      } catch {
-        continue;
+      } catch {}
+      if (Number.isNaN(ts)) {
+        try {
+          const d = chrono.parseDate(m.groups!.timestamp.slice(1, -1));
+          if (d !== null) {
+            ts = Math.floor(d.getTime() / 1000);
+          } else {
+            continue;
+          }
+        } catch {
+          continue;
+        }
       }
       const before = t.slice(0, m.index);
       const after = t.slice(m.index!+m[0].length);
