@@ -227,9 +227,14 @@ export default wirePlugin({
               _api.log(arg.message);
               for (const b of arg.message.blocks)
                 if (b?.type === "rich_text")
-                  for (const e of b?.elements)
+                  for (const e of b?.elements) {
                     if (e?.type === "rich_text_section" && e?.elements && Array.isArray(e?.elements))
                       e.elements = processMrkdwnInRichTextElements(e.elements);
+                    if (e?.type === "rich_text_list" && e?.elements && Array.isArray(e?.elements))
+                      for (const e2 of e?.elements)
+                        if (e2?.type === "rich_text_section" && e2?.elements && Array.isArray(e2?.elements))
+                          e2.elements = processMrkdwnInRichTextElements(e2.elements);
+                  }
               _api.log("Processed");
               _api.log(arg.message);
             }
