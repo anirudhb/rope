@@ -165,30 +165,28 @@ function processMrkdwnInRichTextElements(elements: RichTextElement[]): RichTextE
           const d = chrono.parseDate(m.groups!.timestamp.slice(1, -1));
           if (d !== null) {
             ts = Math.floor(d.getTime() / 1000);
-          } else {
-            continue;
           }
-        } catch {
-          continue;
-        }
+        } catch {}
       }
-      const before = t.slice(0, m.index);
-      const after = t.slice(m.index!+m[0].length);
-      didSegment = true;
-      queue.unshift({
-        ...el,
-        text: before,
-      }, {
-        type: "date",
-        timestamp: ts,
-        format: m.groups!.tstr,
-        url: m.groups!.url,
-        fallback: m.groups!.fallback,
-        style: el.style,
-      }, {
-        ...el,
-        text: after,
-      });
+      if (!Number.isNaN(ts)) {
+        const before = t.slice(0, m.index);
+        const after = t.slice(m.index!+m[0].length);
+        didSegment = true;
+        queue.unshift({
+          ...el,
+          text: before,
+        }, {
+          type: "date",
+          timestamp: ts,
+          format: m.groups!.tstr,
+          url: m.groups!.url,
+          fallback: m.groups!.fallback,
+          style: el.style,
+        }, {
+          ...el,
+          text: after,
+        });
+      }
     }
     // Allow one rule to match at a time
     if (didSegment) continue;
